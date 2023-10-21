@@ -1,12 +1,12 @@
-const express = require('express')
+import express from 'express';
 const app = express()
 const PORT = process.env.PORT || 3000
-const cors = require('cors')
+import cors from 'cors'
 
 
 
-const db = require("./config/mongodb")
-db.dbconnect()
+import dbconnect from "./config/mongodb.js"
+dbconnect()
 
 app.use(cors({
   origin:"http://localhost:5173",
@@ -14,16 +14,16 @@ app.use(cors({
   credentials:true
 }))
 
-app.use(express.json())
-app.use(express.urlencoded({extended:true}))
+app.use(express.json({limit:"50mb"}))
+app.use(express.urlencoded({limit:'50mb',extended:true}))
 
-const userRoute = require("./routes/userRouter")
+import userRoute from "./routes/userRouter.js"
 app.use("/",userRoute)
 
-const partnerRoute = require("./routes/partnerRouter")
+import partnerRoute from "./routes/partnerRouter.js"
 app.use('/partner',partnerRoute)
 
-const adminRoute = require("./routes/adminRouter")
+import adminRoute from"./routes/adminRouter.js"
 app.use('/admin',adminRoute)
 
 

@@ -1,14 +1,16 @@
-const User = require("../models/userModel");
-const Otp = require("../models/otpModel");
-const sendEmail = require("../utils/nodeMailer");
-const jwt = require("jsonwebtoken");
-require("dotenv").config();
-const bcrypt = require("bcrypt");
-const securePassword = require("../utils/securePassword")
+import securePassword from "../utils/securePassword.js";
+import sendEmail from "../utils/nodeMailer.js";
+import User from "../models/userModel.js";
+import Otp from "../models/otpModel.js";
+import Car from "../models/carModel.js";
+import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+dotenv.config();
 let otpId;
 
-
-const userSignup = async (req, res) => {
+export const userSignup = async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
     const hashedPassword = await securePassword(password);
@@ -26,11 +28,7 @@ const userSignup = async (req, res) => {
       password: hashedPassword,
     });
     const userData = await user.save();
-    otpId = await sendEmail.sendEmail(
-      userData.name,
-      userData.email,
-      userData._id,
-    );
+    otpId = await sendEmail(userData.name, userData.email, userData._id);
 
     res.status(201).json({
       status: `Otp has sent to ${email}`,
@@ -42,29 +40,25 @@ const userSignup = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
-const emailOtpVerification = async (req, res) => {
+export const emailOtpVerification = async (req, res) => {
   try {
     const { otp, userId } = req.body;
-    console.log("user");
     const otpData = await Otp.find({ userId: userId });
     const { expiresAt } = otpData[otpData.length - 1];
     const correctOtp = otpData[otpData.length - 1].otp;
     if (otpData && expiresAt < Date.now()) {
       return res.status(401).json({ message: "Email OTP has expired" });
     }
-
     if (correctOtp === otp) {
       await Otp.deleteMany({ userId: userId });
-      const userData = await User.updateOne(
+      await User.updateOne(
         { _id: userId },
         { $set: { isEmailVerified: true } }
       );
-      res
-        .status(200)
-        .json({
-          status: true,
-          message: "User registered successfully,You can login now",
-        });
+      res.status(200).json({
+        status: true,
+        message: "User registered successfully,You can login now",
+      });
     } else {
       res.status(400).json({ status: false, message: "Incorrect OTP" });
     }
@@ -73,11 +67,11 @@ const emailOtpVerification = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-const resendOtp = async (req, res) => {
+export const resendOtp = async (req, res) => {
   try {
     const { userEmail } = req.body;
     const { _id, name, email } = await User.findOne({ email: userEmail });
-    const otpId = sendEmail.sendEmail(name, email, _id);
+    const otpId = sendEmail(name, email, _id);
     if (otpId) {
       res.status(200).json({
         message: `An OTP has been resent to ${email}.`,
@@ -90,7 +84,7 @@ const resendOtp = async (req, res) => {
       .json({ message: "Failed to send OTP. Please try again later." });
   }
 };
-const loginVerification = async (req, res) => {
+export const loginVerification = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email });
@@ -124,7 +118,7 @@ const loginVerification = async (req, res) => {
   }
 };
 
-const userGoogleLogin = async (req, res) => {
+export const userGoogleLogin = async (req, res) => {
   try {
     const { userEmail } = req.body;
     const registeredUser = await User.findOne({ email: userEmail });
@@ -146,13 +140,11 @@ const userGoogleLogin = async (req, res) => {
           expiresIn: "1h",
         }
       );
-      res
-        .status(200)
-        .json({
-          registeredUser,
-          token,
-          message: `Welome ${registeredUser.name}`,
-        });
+      res.status(200).json({
+        registeredUser,
+        token,
+        message: `Welome ${registeredUser.name}`,
+      });
     }
   } catch (error) {
     console.log(error.message);
@@ -160,9 +152,8 @@ const userGoogleLogin = async (req, res) => {
   }
 };
 
-const forgetPassword = async (req, res) => {
+export const forgetPassword = async (req, res) => {
   try {
-    var nodemailer = require("nodemailer");
     const { userEmail } = req.body;
     const secret = process.env.PASSWORD_SECRET;
     const oldUser = await User.findOne({ email: userEmail });
@@ -170,7 +161,7 @@ const forgetPassword = async (req, res) => {
       return res.status(404).json({ message: "User is not regitered" });
     }
     const token = jwt.sign({ id: oldUser._id }, secret, { expiresIn: "5m" });
-    var transporter = nodemailer.createTransport({
+    let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
@@ -178,7 +169,7 @@ const forgetPassword = async (req, res) => {
       },
     });
 
-    var mailOptions = {
+    const mailOptions = {
       from: process.env.EMAIL_USER,
       to: userEmail,
       subject: "Forgot password",
@@ -203,40 +194,48 @@ const forgetPassword = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-const resetPassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
   try {
     const { password } = req.body;
     const { id, token } = req.params;
     const user = await User.findById(id);
-    console.log(user);
     if (!user) {
       return res.status(404).json({ message: "user not found" });
     }
     try {
       const verify = jwt.verify(token, process.env.PASSWORD_SECRET);
-    if (verify) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await User.findByIdAndUpdate(
-        { _id: id },
-        { $set: { password: hashedPassword } },
-      );
-      return res.status(200).json({ message: "Successfully changed password" });
-    }
+      if (verify) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await User.findByIdAndUpdate(
+          { _id: id },
+          { $set: { password: hashedPassword } }
+        );
+        return res
+          .status(200)
+          .json({ message: "Successfully changed password" });
+      }
     } catch (error) {
       console.log(error.message);
-      return res.status(400).json({message:"Something wrong with token"})
+      return res.status(400).json({ message: "Something wrong with token" });
     }
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-module.exports = {
-  emailOtpVerification,
-  loginVerification,
-  userSignup,
-  resendOtp,
-  userGoogleLogin,
-  forgetPassword,
-  resetPassword,
+
+export const HomeCarList = async (req, res) => {
+  try {
+    const carData = await Car.find();
+    if (carData) {
+      res.status(200).json({ cars: carData });
+    } else {
+      res
+        .status(500)
+        .json({ message: "Something wrong with finding car data" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
 };

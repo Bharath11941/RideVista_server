@@ -1,15 +1,33 @@
-const express = require('express')
+import express from 'express';
 const partnerRoute = express()
-const partnerController = require("../controllers/partnerController")
-
-partnerRoute.post('/signup',partnerController.partnerRegister)
-partnerRoute.post('/otp',partnerController.partnerEmailVerify)
-partnerRoute.post('/resendOtp',partnerController.partnerResendOtp)
-partnerRoute.post('/login',partnerController.partnerLoginVerify)
-partnerRoute.post('/googleLogin',partnerController.partnerLoginWithGoogle)
+import { partnerTokenVerify } from '../middlewares/authVerify.js';
+import {partnerRegister,partnerEmailVerify,partnerResendOtp,partnerResetPassword,partnerLoginVerify,partnerLoginWithGoogle,addCar, MyCarListDetails, editcarDetails, editCar,partnerForgotPass} from "../controllers/partnerController.js"
 
 
-module.exports = partnerRoute
+partnerRoute.post('/signup',partnerRegister)
+partnerRoute.post('/otp',partnerEmailVerify)
+partnerRoute.post('/resendOtp',partnerResendOtp)
+partnerRoute.post('/login',partnerLoginVerify)
+partnerRoute.post('/googleLogin',partnerLoginWithGoogle)
+partnerRoute.post('/partnerForget',partnerForgotPass)
+partnerRoute.patch('/partnerResetPass/:id/:token',partnerResetPassword)
+partnerRoute.post('/addCar',partnerTokenVerify,addCar)
+partnerRoute.get('/myCars/:partnerId',partnerTokenVerify,MyCarListDetails)
+partnerRoute.get('/editcarDetails/:carId',partnerTokenVerify,editcarDetails)
+partnerRoute.put('/editCar',partnerTokenVerify,editCar)
+
+export default partnerRoute
+
+
+
+
+
+
+
+
+
+
+
 
 
 

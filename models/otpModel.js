@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+import mongoose from "mongoose"
 
 const otpSchema = new mongoose.Schema({
   userId: mongoose.Types.ObjectId,
@@ -8,4 +8,4 @@ const otpSchema = new mongoose.Schema({
 
 })
 
-module.exports = mongoose.model("otp",otpSchema)
+export default mongoose.model("otp",otpSchema)

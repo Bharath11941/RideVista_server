@@ -1,12 +1,10 @@
-const Otp = require("../models/otpModel")
-const crypto = require('crypto')
-const nodemailer = require('nodemailer')
-require("dotenv").config();
+import Otp from "../models/otpModel.js";
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+dotenv.config();
 
 
-
-
-const sendEmail = async (name,email,userId) => {
+ const sendEmail = async (name,email,userId) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -71,5 +69,4 @@ const sendEmail = async (name,email,userId) => {
   }
 }
 
-
-module.exports = {sendEmail}
+export default sendEmail

@@ -41,7 +41,17 @@ const carSchema = new mongoose.Schema({
   certificate:{
     type:String,
     required:true
-  }
+  },
+  bookingDates:[
+    {
+      startDate:{
+        type:Date
+      },
+      endDate:{
+        type:Date
+      }
+    }
+  ]
 
 })
 export default mongoose.model('car',carSchema)

@@ -74,13 +74,27 @@ export const singleCarDetails = async (req,res) => {
   try {
     const {carId} = req.params
     const car = await Car.findById(carId).populate('partnerId')
-    console.log(car)
     res.status(200).json({car})
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
 }
+export const verifyCarDetails = async (req,res) => {
+  try {
+    const {carId,action} = req.body
+    if(action === "approve"){
+      const car = await Car.findByIdAndUpdate({_id:carId},{$set:{verificationStatus:"Approved"}},{new:true})
+      res.status(200).json({succMessage:"Arroved",car})
+    }else{
+      const car = await Car.findByIdAndUpdate({_id:carId},{$set:{verificationStatus:"Rejected"}},{new:true})
+      res.status(200).json({errMessage:"Rejected",car})
+    }
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+} 
 export const userBlock = async (req,res) => {
   try {
     const {userId,status} = req.body

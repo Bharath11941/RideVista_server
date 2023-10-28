@@ -3,8 +3,11 @@ import sendEmail from "../utils/nodeMailer.js";
 import User from "../models/userModel.js";
 import Otp from "../models/otpModel.js";
 import Car from "../models/carModel.js";
+import Bookings from "../models/bookingModel.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 dotenv.config();
@@ -224,15 +227,91 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-export const HomeCarList = async (req, res) => {
+export const homeCarList = async (req, res) => {
   try {
-    const carData = await Car.find();
+    const carData = await Car.find().populate("partnerId").limit(6);
     if (carData) {
       res.status(200).json({ cars: carData });
     } else {
       res
         .status(500)
         .json({ message: "Something wrong with finding car data" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const allCarsList = async (req, res) => {
+  try {
+    const carData = await Car.find().populate("partnerId");
+    if (carData) {
+      res.status(200).json({ cars: carData });
+    } else {
+      res
+        .status(500)
+        .json({ message: "Something wrong with finding car data" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const carBooking = async (req, res) => {
+  try {
+    const { _id, totalAmount, startDate, endDate, userId } = req.body;
+    const booking = new Bookings({
+      user: userId,
+      car: _id,
+      totalBookingCharge: totalAmount,
+      startDate,
+      endDate,
+    });
+    const bookingData = await booking.save();
+    const instance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+    const options = {
+      amount: totalAmount * 100,
+      currency: "INR",
+      receipt: "" + bookingData._id,
+    };
+    instance.orders.create(options, function (err, booking) {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({ message: "Something went wrong" });
+      }
+      res.status(200).json({ bookingData: booking });
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const verifyBooking = async (req, res) => {
+  try {
+    const { response, bookingData } = req.body;
+    console.log(bookingData, "From verify booking");
+    let hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
+    hmac.update(
+      response.razorpay_order_id + "|" + response.razorpay_payment_id
+    );
+    hmac = hmac.digest("hex");
+    if (hmac === response.razorpay_signature) {
+      const bookingDetails = await Bookings.findByIdAndUpdate(
+        { _id: bookingData.receipt },
+        { $set: { paymentStatus: "Success" } },{new:true}
+      );
+      const carDetails = await Car.findByIdAndUpdate(
+        { _id: bookingData.carId },
+        { $push: { bookingDates: { startDate:bookingData.startDate, endDate:bookingData.endDate } } },{new:true}
+      );
+      res.status(200).json({ message:"Your booking succeffully completed", carDetails, bookingDetails });
+    } else {
+      await Bookings.deleteOne({ _id: bookingData.receipt });
+      res.status(400).json({ message: "Payment failed" });
     }
   } catch (error) {
     console.log(error.message);

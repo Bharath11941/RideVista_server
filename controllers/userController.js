@@ -302,17 +302,76 @@ export const verifyBooking = async (req, res) => {
     if (hmac === response.razorpay_signature) {
       const bookingDetails = await Bookings.findByIdAndUpdate(
         { _id: bookingData.receipt },
-        { $set: { paymentStatus: "Success" } },{new:true}
+        { $set: { paymentStatus: "Success" } },
+        { new: true }
       );
       const carDetails = await Car.findByIdAndUpdate(
         { _id: bookingData.carId },
-        { $push: { bookingDates: { startDate:bookingData.startDate, endDate:bookingData.endDate } } },{new:true}
+        {
+          $push: {
+            bookingDates: {
+              startDate: bookingData.startDate,
+              endDate: bookingData.endDate,
+            },
+          },
+        },
+        { new: true }
       );
-      res.status(200).json({ message:"Your booking succeffully completed", carDetails, bookingDetails });
+      res.status(200).json({
+        message: "Your booking succeffully completed",
+        carDetails,
+        bookingDetails,
+      });
     } else {
       await Bookings.deleteOne({ _id: bookingData.receipt });
       res.status(400).json({ message: "Payment failed" });
     }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const filterCasDateLocation = async (req, res) => {
+  try {
+    const { pickUpLocation, returnLocation, pickUpDate, returnDate } = req.body;
+    const availableCars = await Car.aggregate([
+      {
+        $match: {
+          $or: [
+            { location: pickUpLocation },
+            { location: returnLocation },
+            {
+              location: {
+                $regex: new RegExp(pickUpLocation, "i"),
+              },
+            },
+            {
+              location: {
+                $regex: new RegExp(returnLocation, "i"),
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    const filteredCars = availableCars.filter((car) => {
+      const bookingDates = car.bookingDates
+      if(!bookingDates || bookingDates.length === 0){
+        return true
+      }
+      const pickUp = new Date(pickUpDate).getTime()
+      const returnD = new Date(returnDate).getTime()
+      for(const booking of bookingDates){
+        const startDate = booking.startDate.getTime()
+        const endDate = booking.endDate.getTime()
+
+        if(pickUp >= startDate && pickUp <endDate || returnD >startDate && returnD <=endDate){
+          return false
+        }
+      }
+      return true
+    })
+    res.status(200).json({cars:filteredCars})
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });

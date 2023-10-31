@@ -26,7 +26,15 @@ const bookingSchema = new mongoose.Schema({
   paymentStatus:{
     type:String,
     default:"Pending"
-  }
+  },
+  pickUpLocation:{
+    type:String,
+    required:true
+  },
+  returnLocation:{
+    type:String,
+    required:true
+  },
 },{timestamps:true})
 
 export default mongoose.model('booking',bookingSchema)

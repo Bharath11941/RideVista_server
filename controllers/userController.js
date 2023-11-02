@@ -242,21 +242,6 @@ export const homeCarList = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const allCarsList = async (req, res) => {
-  try {
-    const carData = await Car.find().populate("partnerId");
-    if (carData) {
-      res.status(200).json({ cars: carData });
-    } else {
-      res
-        .status(500)
-        .json({ message: "Something wrong with finding car data" });
-    }
-  } catch (error) {
-    console.log(error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 export const carBooking = async (req, res) => {
   try {
     const { _id, totalAmount, startDate, endDate, userId } = req.body;
@@ -331,7 +316,7 @@ export const verifyBooking = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const filterCasDateLocation = async (req, res) => {
+export const filterCarDateLocation = async (req, res) => {
   try {
     const { pickUpLocation, returnLocation, pickUpDate, returnDate } = req.body;
     const availableCars = await Car.aggregate([
@@ -353,6 +338,14 @@ export const filterCasDateLocation = async (req, res) => {
           ],
         },
       },
+      {
+        $lookup:{
+          from:"partners",
+          localField:"partnerId",
+          foreignField:"_id",
+          as:"partner"
+        }
+      }
     ]);
     const filteredCars = availableCars.filter((car) => {
       const bookingDates = car.bookingDates

@@ -332,13 +332,21 @@ export const editCar = async (req,res) => {
     });
     // Wait for all the uploads to complete using Promise.all
     const uploadedImages = await Promise.all(uploadPromises);
+    const existingCar = await Car.findById(carId)
+    let existingImage = []
+    if(existingCar && existingCar.carImages && existingCar.carImages.length > 0){
+      existingImage = existingCar.carImages
+    }
 
     // Store the URLs in the carImages array
     let carImages = uploadedImages.map((image) => image.secure_url);
+    for(let i=0; i<carImages.length; i++){
+      existingImage.push(carImages[i])
+    }
     await Car.findByIdAndUpdate({_id:carId},{$set:{
       carName,
       price,
-      carImages,
+      carImages:existingImage,
       certificate:certificateFile.secure_url,
       fuelType,
       modelType,
@@ -350,4 +358,20 @@ export const editCar = async (req,res) => {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
+}
+export const deleteCarImage = async (req,res) => {
+  try {
+    const {imageUrl,carId} = req.body
+  const updatedData = await Car.findByIdAndUpdate({_id:carId},{$pull:{carImages:imageUrl}},{new:true})
+  
+  if (!updatedData) {
+    return res.status(404).json({ message: 'Car not found' });
+  }
+
+  res.status(200).json({ message: 'Image removed successfully', updatedData });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+ 
 }

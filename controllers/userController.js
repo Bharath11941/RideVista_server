@@ -244,13 +244,15 @@ export const homeCarList = async (req, res) => {
 };
 export const carBooking = async (req, res) => {
   try {
-    const { _id, totalAmount, startDate, endDate, userId } = req.body;
+    const { _id, totalAmount, startDate, endDate, userId,pickUpLocation,returnLocation } = req.body;
     const booking = new Bookings({
       user: userId,
       car: _id,
       totalBookingCharge: totalAmount,
       startDate,
       endDate,
+      pickUpLocation,
+      returnLocation
     });
     const bookingData = await booking.save();
     const instance = new Razorpay({

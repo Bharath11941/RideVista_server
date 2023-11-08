@@ -244,15 +244,25 @@ export const homeCarList = async (req, res) => {
 };
 export const carBooking = async (req, res) => {
   try {
-    const { _id, totalAmount, startDate, endDate, userId,pickUpLocation,returnLocation } = req.body;
+    const {
+      _id,
+      totalAmount,
+      partnerId,
+      startDate,
+      endDate,
+      userId,
+      pickUpLocation,
+      returnLocation,
+    } = req.body;
     const booking = new Bookings({
       user: userId,
+      partner: partnerId,
       car: _id,
       totalBookingCharge: totalAmount,
       startDate,
       endDate,
       pickUpLocation,
-      returnLocation
+      returnLocation,
     });
     const bookingData = await booking.save();
     const instance = new Razorpay({
@@ -280,7 +290,6 @@ export const carBooking = async (req, res) => {
 export const verifyBooking = async (req, res) => {
   try {
     const { response, bookingData } = req.body;
-    console.log(bookingData, "From verify booking");
     let hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
     hmac.update(
       response.razorpay_order_id + "|" + response.razorpay_payment_id
@@ -289,7 +298,7 @@ export const verifyBooking = async (req, res) => {
     if (hmac === response.razorpay_signature) {
       const bookingDetails = await Bookings.findByIdAndUpdate(
         { _id: bookingData.receipt },
-        { $set: { paymentStatus: "Success" } },
+        { $set: { bookingStatus: "Success" } },
         { new: true }
       );
       const carDetails = await Car.findByIdAndUpdate(
@@ -341,34 +350,69 @@ export const filterCarDateLocation = async (req, res) => {
         },
       },
       {
-        $lookup:{
-          from:"partners",
-          localField:"partnerId",
-          foreignField:"_id",
-          as:"partner"
-        }
-      }
+        $lookup: {
+          from: "partners",
+          localField: "partnerId",
+          foreignField: "_id",
+          as: "partner",
+        },
+      },
     ]);
     const filteredCars = availableCars.filter((car) => {
-      const bookingDates = car.bookingDates
-      if(!bookingDates || bookingDates.length === 0){
-        return true
+      const bookingDates = car.bookingDates;
+      if (!bookingDates || bookingDates.length === 0) {
+        return true;
       }
-      const pickUp = new Date(pickUpDate).getTime()
-      const returnD = new Date(returnDate).getTime()
-      for(const booking of bookingDates){
-        const startDate = booking.startDate.getTime()
-        const endDate = booking.endDate.getTime()
+      const pickUp = new Date(pickUpDate).getTime();
+      const returnD = new Date(returnDate).getTime();
+      for (const booking of bookingDates) {
+        const startDate = booking.startDate.getTime();
+        const endDate = booking.endDate.getTime();
 
-        if(pickUp >= startDate && pickUp <endDate || returnD >startDate && returnD <=endDate){
-          return false
+        if (
+          (pickUp >= startDate && pickUp < endDate) ||
+          (returnD > startDate && returnD <= endDate)
+        ) {
+          return false;
         }
       }
-      return true
-    })
-    res.status(200).json({cars:filteredCars})
+      return true;
+    });
+    res.status(200).json({ cars: filteredCars });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+export const myBookings = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const bookingList = await Bookings.find({ user: userId }).populate("car").sort({
+      timestampField: -1,
+    });
+    res.status(200).json({bookingList})
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+export const cancelBooking = async (req,res) => {
+  try {
+    const {bookingId,reason} = req.body
+    const updataedData = await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{cancelReason:reason,bookingStatus:"Cancelled"}},{new:true})
+    const userId = updataedData.user
+    await User.findByIdAndUpdate({_id:userId},{$inc:{wallet:updataedData.totalBookingCharge}})
+    const bookingList = await Bookings.find({ user: userId }).populate("car").sort({
+      timestampField: -1,
+    });
+    
+    res.status(200).json({bookingList,message:"Booking cancelled,Refound will be credited in your wallet"})
+
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+}
+
+
+
+

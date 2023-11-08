@@ -4,10 +4,12 @@ import cloudinary from "../utils/cloudinary.js";
 import Partner from "../models/partnerModel.js";
 import Car from "../models/carModel.js";
 import Otp from "../models/otpModel.js";
+import Bookings from '../models/bookingModel.js'
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import User from "../models/userModel.js";
 dotenv.config();
 let otpId;
 
@@ -374,4 +376,50 @@ export const deleteCarImage = async (req,res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
  
+}
+export const bookingListParner = async (req,res) => {
+  try {
+    const { partnerId } = req.params;
+    const bookingList = await Bookings.find({ partner: partnerId }).populate("car").sort({
+      timestampField: -1,
+    });
+
+    res.status(200).json({bookingList})
+    
+  } catch (error) {
+    console.log(error.message)
+  }
+}
+export const cancelBookingPartner = async (req,res) => {
+  try {
+    const {bookingId,reason} = req.body
+    const updataedData = await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{cancelReason:reason,bookingStatus:"Cancelled"}},{new:true})
+    const partner = updataedData.partner
+    const userId = updataedData.user
+    await User.findByIdAndUpdate({_id:userId},{$inc:{wallet:updataedData.totalBookingCharge}})
+    const bookingList = await Bookings.find({ partner: partner }).populate("car").sort({
+      timestampField: -1,
+    });
+    
+    res.status(200).json({bookingList,message:"Booking cancelled,Refound will be credited in your wallet"})
+
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+}
+export const changeBookingStatus = async (req,res) => {
+  try {
+    const {status,bookingId,startDate,endDate,carId} = req.body
+    await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{bookingStatus:status}})
+    if(status === "Returned"){
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      await Car.findByIdAndUpdate({_id:carId._id},{$pull:{bookingDates:{startDate:start,endDate:end}}})
+    }
+    res.status(200).json({message:`Car Successfully Delivered to User`})
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
 }

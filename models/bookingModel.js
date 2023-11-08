@@ -6,6 +6,11 @@ const bookingSchema = new mongoose.Schema({
     ref:"user",
     required:true
   },
+  partner : {
+    type:mongoose.Types.ObjectId,
+    ref:'partner',
+    required:true
+  },
   car:{
     type:mongoose.Types.ObjectId,
     ref:"car",
@@ -23,7 +28,7 @@ const bookingSchema = new mongoose.Schema({
     type:Date,
     required:true
   },
-  paymentStatus:{
+  bookingStatus:{
     type:String,
     default:"Pending"
   },
@@ -35,6 +40,9 @@ const bookingSchema = new mongoose.Schema({
     type:String,
     required:true
   },
+  cancelReason:{
+    type:String,
+  }
 },{timestamps:true})
 
 export default mongoose.model('booking',bookingSchema)

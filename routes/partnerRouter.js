@@ -1,7 +1,7 @@
 import express from 'express';
 const partnerRoute = express()
 import { partnerTokenVerify } from '../middlewares/authVerify.js';
-import {partnerRegister,partnerEmailVerify,partnerResendOtp,partnerResetPassword,partnerLoginVerify,partnerLoginWithGoogle,addCar, MyCarListDetails, editcarDetails, editCar,partnerForgotPass, deleteCarImage} from "../controllers/partnerController.js"
+import {partnerRegister,partnerEmailVerify,partnerResendOtp,partnerResetPassword,partnerLoginVerify,partnerLoginWithGoogle,addCar, MyCarListDetails, editcarDetails, editCar,partnerForgotPass, deleteCarImage, bookingListParner, cancelBookingPartner, changeBookingStatus} from "../controllers/partnerController.js"
 
 
 partnerRoute.post('/signup',partnerRegister)
@@ -16,12 +16,11 @@ partnerRoute.get('/myCars/:partnerId',partnerTokenVerify,MyCarListDetails)
 partnerRoute.get('/editcarDetails/:carId',partnerTokenVerify,editcarDetails)
 partnerRoute.put('/editCar',partnerTokenVerify,editCar)
 partnerRoute.patch("/deleteImage",partnerTokenVerify,deleteCarImage)
+partnerRoute.get('/bookingsPartner/:partnerId',bookingListParner)
+partnerRoute.post('/cancelBooking',partnerTokenVerify,cancelBookingPartner)
+partnerRoute.patch('/changeStatus',partnerTokenVerify,changeBookingStatus)
 
 export default partnerRoute
-
-
-
-
 
 
 

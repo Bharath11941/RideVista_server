@@ -380,7 +380,7 @@ export const deleteCarImage = async (req,res) => {
 export const bookingListParner = async (req,res) => {
   try {
     const { partnerId } = req.params;
-    const bookingList = await Bookings.find({ partner: partnerId }).populate("car").sort({
+    const bookingList = await Bookings.find({ partner: partnerId }).populate("car").populate("user").sort({
       timestampField: -1,
     });
 
@@ -418,6 +418,19 @@ export const changeBookingStatus = async (req,res) => {
       await Car.findByIdAndUpdate({_id:carId._id},{$pull:{bookingDates:{startDate:start,endDate:end}}})
     }
     res.status(200).json({message:`Car Successfully Delivered to User`})
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+}
+export const getReviews = async (req,res) => {
+  try {
+    const {id} = req.params
+    const carData = await Car.findById(id).populate({
+      path: 'ratings.postedBy',
+      select: 'name'
+    });
+    res.status(200).json(carData)
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });

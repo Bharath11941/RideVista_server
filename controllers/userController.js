@@ -226,7 +226,16 @@ export const resetPassword = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
+export const getUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userData = await User.findOne({ _id: id });
+    res.status(200).json({ userData });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 export const homeCarList = async (req, res) => {
   try {
     const carData = await Car.find().populate("partnerId").limit(6);
@@ -327,6 +336,39 @@ export const verifyBooking = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+export const reviewCar = async (req, res) => {
+  try {
+    const { carId, userId, rating, reason } = req.body;
+    const carData = await Car.findById(carId);
+    let alreadyRated = carData.ratings.find(
+      (user) => user.postedBy.toString() === userId.toString()
+    );
+    if (alreadyRated) {
+      await Car.updateOne(
+        { ratings: { $elemMatch: alreadyRated } },
+        { $set: { "ratings.$.star": rating, "ratings.$.description": reason } }
+      );
+    } else {
+      await Car.findByIdAndUpdate(carId, {
+        $push: {
+          ratings: { star: rating, description: reason, postedBy: userId },
+        },
+      });
+    }
+    const getAllRatings = await Car.findById(carId);
+    const totalRating = getAllRatings.ratings.length;
+    const ratingSum = getAllRatings.ratings
+      .map((rating) => rating.star)
+      .reduce((prev, curr) => prev + curr, 0);
+    const actualRating = (ratingSum / totalRating).toFixed(1);
+    await Car.findByIdAndUpdate(carId, { $set: { totalRating: actualRating } });
+    res.status(200).json({message:"Thank you so much.Your review has been recieved"})
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export const filterCarDateLocation = async (req, res) => {
   try {
     const { pickUpLocation, returnLocation, pickUpDate, returnDate } = req.body;
@@ -387,32 +429,41 @@ export const filterCarDateLocation = async (req, res) => {
 export const myBookings = async (req, res) => {
   try {
     const { userId } = req.params;
-    const bookingList = await Bookings.find({ user: userId }).populate("car").sort({
-      timestampField: -1,
-    });
-    res.status(200).json({bookingList})
+    const bookingList = await Bookings.find({ user: userId })
+      .populate("car")
+      .sort({
+        createdAt: -1,
+      });
+    res.status(200).json({ bookingList });
   } catch (error) {
     console.log(error.message);
   }
 };
-export const cancelBooking = async (req,res) => {
+export const cancelBooking = async (req, res) => {
   try {
-    const {bookingId,reason} = req.body
-    const updataedData = await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{cancelReason:reason,bookingStatus:"Cancelled"}},{new:true})
-    const userId = updataedData.user
-    await User.findByIdAndUpdate({_id:userId},{$inc:{wallet:updataedData.totalBookingCharge}})
-    const bookingList = await Bookings.find({ user: userId }).populate("car").sort({
-      timestampField: -1,
-    });
-    
-    res.status(200).json({bookingList,message:"Booking cancelled,Refound will be credited in your wallet"})
+    const { bookingId, reason } = req.body;
+    const updataedData = await Bookings.findByIdAndUpdate(
+      { _id: bookingId },
+      { $set: { cancelReason: reason, bookingStatus: "Cancelled" } },
+      { new: true }
+    );
+    const userId = updataedData.user;
+    await User.findByIdAndUpdate(
+      { _id: userId },
+      { $inc: { wallet: updataedData.totalBookingCharge } }
+    );
+    const bookingList = await Bookings.find({ user: userId })
+      .populate("car")
+      .sort({
+        createdAt: -1,
+      });
 
+    res.status(200).json({
+      bookingList,
+      message: "Booking cancelled,Refound will be credited in your wallet",
+    });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
-
-
-
-
+};

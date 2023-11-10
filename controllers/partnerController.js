@@ -4,7 +4,7 @@ import cloudinary from "../utils/cloudinary.js";
 import Partner from "../models/partnerModel.js";
 import Car from "../models/carModel.js";
 import Otp from "../models/otpModel.js";
-import Bookings from '../models/bookingModel.js'
+import Bookings from "../models/bookingModel.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -182,14 +182,14 @@ export const partnerForgotPass = async (req, res) => {
         pass: process.env.EMAIL_PASSWORD,
       },
     });
-    console.log("after transpot")
+    console.log("after transpot");
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: partnerEmail,
       subject: "Forgot password",
       text: `http://localhost:5173/partner/partnerReset/${oldPartner._id}/${token}`,
     };
-    console.log("after mailoptons")
+    console.log("after mailoptons");
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.error("Error sending email:", error);
@@ -248,7 +248,7 @@ export const addCar = async (req, res) => {
       fuelType,
       transitionType,
       modelType,
-      partnerId
+      partnerId,
     } = req.body;
     const certificateFile = await cloudinary.uploader.upload(certificate, {
       folder: "CarDocuments",
@@ -263,7 +263,7 @@ export const addCar = async (req, res) => {
 
     // Store the URLs in the carImages array
     let carImages = uploadedImages.map((image) => image.secure_url);
-     await Car.create({
+    await Car.create({
       carName,
       partnerId,
       price,
@@ -271,46 +271,48 @@ export const addCar = async (req, res) => {
       fuelType,
       transitionType,
       modelType,
-      certificate:certificateFile.secure_url,
-      carImages
-    })
-    res.status(201).json({message:"Car added successfully"})
-
+      certificate: certificateFile.secure_url,
+      carImages,
+    });
+    res.status(201).json({ message: "Car added successfully" });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
 
-export const MyCarListDetails = async (req,res) => {
+export const MyCarListDetails = async (req, res) => {
   try {
-    const {partnerId} = req.params
-    const cars = await Car.find({partnerId:partnerId})
-    if(cars){
-      return res.status(200).json({cars})
-    }else{
-      return res.status(200).json({message:"something happened with finding car data"})
+    const { partnerId } = req.params;
+    const cars = await Car.find({ partnerId: partnerId });
+    if (cars) {
+      return res.status(200).json({ cars });
+    } else {
+      return res
+        .status(200)
+        .json({ message: "something happened with finding car data" });
     }
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
+};
 
-export const editcarDetails = async(req,res) => {
+export const editcarDetails = async (req, res) => {
   try {
-    const {carId} = req.params
-    const car = await Car.findById(carId)
-    if(car){
-      return res.json({car})
+    const { carId } = req.params;
+    const car = await Car.findById(carId);
+    if (car) {
+      return res.status(200).json({ car });
     }
+    return res.status(404).json({ message: "Car not found" });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
+};
 
-export const editCar = async (req,res) => {
+export const editCar = async (req, res) => {
   try {
     const {
       certificate,
@@ -321,9 +323,8 @@ export const editCar = async (req,res) => {
       fuelType,
       transitionType,
       modelType,
-      carId
+      carId,
     } = req.body;
-    
     const certificateFile = await cloudinary.uploader.upload(certificate, {
       folder: "CarDocuments",
     });
@@ -334,105 +335,153 @@ export const editCar = async (req,res) => {
     });
     // Wait for all the uploads to complete using Promise.all
     const uploadedImages = await Promise.all(uploadPromises);
-    const existingCar = await Car.findById(carId)
-    let existingImage = []
-    if(existingCar && existingCar.carImages && existingCar.carImages.length > 0){
-      existingImage = existingCar.carImages
+    const existingCar = await Car.findById(carId);
+    let existingImage = [];
+    if (
+      existingCar &&
+      existingCar.carImages &&
+      existingCar.carImages.length > 0
+    ) {
+      existingImage = existingCar.carImages;
     }
 
     // Store the URLs in the carImages array
     let carImages = uploadedImages.map((image) => image.secure_url);
-    for(let i=0; i<carImages.length; i++){
-      existingImage.push(carImages[i])
+    for (let i = 0; i < carImages.length; i++) {
+      existingImage.push(carImages[i]);
     }
-    await Car.findByIdAndUpdate({_id:carId},{$set:{
-      carName,
-      price,
-      carImages:existingImage,
-      certificate:certificateFile.secure_url,
-      fuelType,
-      modelType,
-      transitionType,
-      location
-    }})
-    res.status(200).json({message:"Car updated"})
+    await Car.findByIdAndUpdate(
+      { _id: carId },
+      {
+        $set: {
+          carName,
+          price,
+          carImages: existingImage,
+          certificate: certificateFile.secure_url,
+          fuelType,
+          modelType,
+          transitionType,
+          location,
+        },
+      }
+    );
+    res.status(200).json({ message: "Car updated" });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
-export const deleteCarImage = async (req,res) => {
+};
+export const deleteCarImage = async (req, res) => {
   try {
-    const {imageUrl,carId} = req.body
-  const updatedData = await Car.findByIdAndUpdate({_id:carId},{$pull:{carImages:imageUrl}},{new:true})
-  
-  if (!updatedData) {
-    return res.status(404).json({ message: 'Car not found' });
-  }
+    const { imageUrl, carId } = req.body;
+    const publicId = imageUrl.match(/\/v\d+\/(.+?)\./)[1]; // Extract public ID from URL
 
-  res.status(200).json({ message: 'Image removed successfully', updatedData });
+    const deletionResult = await cloudinary.uploader.destroy(publicId, {
+      folder: "CarImages", // Optional, specify the folder if necessary
+    });
+
+    if (deletionResult.result === "ok") {
+      console.log(
+        `Image at ${imageUrl} in CarImages successfully deleted from Cloudinary.`
+      );
+      const updatedData = await Car.findByIdAndUpdate(
+        { _id: carId },
+        { $pull: { carImages: imageUrl } },
+        { new: true }
+      );
+      if (!updatedData) {
+        return res.status(404).json({ message: "Car not found" });
+      }
+
+     return res
+        .status(200)
+        .json({ message: "Image removed successfully", updatedData });
+    } else {
+      console.error(
+        `Failed to delete image at ${imageUrl} in CarImages from Cloudinary.`
+      );
+      return res.status(500).json({ message: "image not found in cloudinary" });
+    }
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
- 
-}
-export const bookingListParner = async (req,res) => {
+};
+export const bookingListParner = async (req, res) => {
   try {
     const { partnerId } = req.params;
-    const bookingList = await Bookings.find({ partner: partnerId }).populate("car").populate("user").sort({
-      timestampField: -1,
-    });
+    const bookingList = await Bookings.find({ partner: partnerId })
+      .populate("car")
+      .populate("user")
+      .sort({
+        timestampField: -1,
+      });
 
-    res.status(200).json({bookingList})
-    
+    res.status(200).json({ bookingList });
   } catch (error) {
-    console.log(error.message)
+    console.log(error.message);
   }
-}
-export const cancelBookingPartner = async (req,res) => {
+};
+export const cancelBookingPartner = async (req, res) => {
   try {
-    const {bookingId,reason} = req.body
-    const updataedData = await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{cancelReason:reason,bookingStatus:"Cancelled"}},{new:true})
-    const partner = updataedData.partner
-    const userId = updataedData.user
-    await User.findByIdAndUpdate({_id:userId},{$inc:{wallet:updataedData.totalBookingCharge}})
-    const bookingList = await Bookings.find({ partner: partner }).populate("car").sort({
-      timestampField: -1,
-    });
-    
-    res.status(200).json({bookingList,message:"Booking cancelled,Refound will be credited in your wallet"})
+    const { bookingId, reason } = req.body;
+    const updataedData = await Bookings.findByIdAndUpdate(
+      { _id: bookingId },
+      { $set: { cancelReason: reason, bookingStatus: "Cancelled" } },
+      { new: true }
+    );
+    const partner = updataedData.partner;
+    const userId = updataedData.user;
+    await User.findByIdAndUpdate(
+      { _id: userId },
+      { $inc: { wallet: updataedData.totalBookingCharge } }
+    );
+    const bookingList = await Bookings.find({ partner: partner })
+      .populate("car")
+      .sort({
+        timestampField: -1,
+      });
 
+    res.status(200).json({
+      bookingList,
+      message: "Booking cancelled,Refound will be credited in your wallet",
+    });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
-export const changeBookingStatus = async (req,res) => {
+};
+export const changeBookingStatus = async (req, res) => {
   try {
-    const {status,bookingId,startDate,endDate,carId} = req.body
-    await Bookings.findByIdAndUpdate({_id:bookingId},{$set:{bookingStatus:status}})
-    if(status === "Returned"){
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      await Car.findByIdAndUpdate({_id:carId._id},{$pull:{bookingDates:{startDate:start,endDate:end}}})
+    const { status, bookingId, startDate, endDate, carId } = req.body;
+    await Bookings.findByIdAndUpdate(
+      { _id: bookingId },
+      { $set: { bookingStatus: status } }
+    );
+    if (status === "Returned") {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      await Car.findByIdAndUpdate(
+        { _id: carId._id },
+        { $pull: { bookingDates: { startDate: start, endDate: end } } }
+      );
     }
-    res.status(200).json({message:`Car Successfully Delivered to User`})
+    res.status(200).json({ message: `Car Successfully Delivered to User` });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
-export const getReviews = async (req,res) => {
+};
+export const getReviews = async (req, res) => {
   try {
-    const {id} = req.params
+    const { id } = req.params;
     const carData = await Car.findById(id).populate({
-      path: 'ratings.postedBy',
-      select: 'name'
+      path: "ratings.postedBy",
+      select: "name",
     });
-    res.status(200).json(carData)
+    res.status(200).json(carData);
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
+};

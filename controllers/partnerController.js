@@ -393,7 +393,7 @@ export const deleteCarImage = async (req, res) => {
         return res.status(404).json({ message: "Car not found" });
       }
 
-     return res
+      return res
         .status(200)
         .json({ message: "Image removed successfully", updatedData });
     } else {
@@ -451,6 +451,68 @@ export const cancelBookingPartner = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
+export const cancelRequests = async (req, res) => {
+  try {
+    const {partnerId} = req.params
+    console.log(partnerId,"from partner")
+    const totalRequests = await Bookings.find({ cancelStatus: "Pending",partner:partnerId })
+      .populate("car")
+      .sort({
+        createdAt: -1,
+      });
+      console.log(totalRequests,"from total")
+    res.status(200).json({ totalRequests: totalRequests });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+};
+export const apporveCancelRequest = async (req, res) => {
+  try {
+    const { bookingId, status } = req.body;
+    if (status === "Approved") {
+      const updataedData = await Bookings.findByIdAndUpdate(
+        { _id: bookingId },
+        { $set: { bookingStatus: "Cancelled", cancelStatus: status } },
+        { new: true }
+      );
+      const userId = updataedData.user;
+      await User.findByIdAndUpdate(
+        { _id: userId },
+        { $inc: { wallet: updataedData.totalBookingCharge } }
+      );
+      const totalRequests = await Bookings.find({ cancelStatus: "Pending" })
+        .populate("car")
+        .sort({
+          createdAt: -1,
+        });
+      res
+        .status(200)
+        .json({
+          totalRequests: totalRequests,
+          message: "Cancel reuest has been appoved",
+        });
+    } else if (status === "Rejected") {
+     const updataedData = await Bookings.findByIdAndUpdate(
+        { _id: bookingId },
+        { $set: { cancelStatus: status } },
+        { new: true }
+      );
+      const totalRequests = await Bookings.find({ cancelStatus: "Pending" })
+        .populate("car")
+        .sort({
+          createdAt: -1,
+        });
+      res
+        .status(200)
+        .json({
+          totalRequests: totalRequests,
+          message: "Cancel reuest has been rejected",
+        });
+    }
+  } catch (error) {}
+};
+
 export const changeBookingStatus = async (req, res) => {
   try {
     const { status, bookingId, startDate, endDate, carId } = req.body;

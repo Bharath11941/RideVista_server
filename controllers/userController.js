@@ -444,14 +444,14 @@ export const cancelBooking = async (req, res) => {
     const { bookingId, reason } = req.body;
     const updataedData = await Bookings.findByIdAndUpdate(
       { _id: bookingId },
-      { $set: { cancelReason: reason, bookingStatus: "Cancelled" } },
+      { $set: { cancelReason: reason, cancelStatus: "Pending" } },
       { new: true }
     );
     const userId = updataedData.user;
-    await User.findByIdAndUpdate(
-      { _id: userId },
-      { $inc: { wallet: updataedData.totalBookingCharge } }
-    );
+    // await User.findByIdAndUpdate(
+    //   { _id: userId },
+    //   { $inc: { wallet: updataedData.totalBookingCharge } }
+    // );
     const bookingList = await Bookings.find({ user: userId })
       .populate("car")
       .sort({
@@ -460,10 +460,18 @@ export const cancelBooking = async (req, res) => {
 
     res.status(200).json({
       bookingList,
-      message: "Booking cancelled,Refound will be credited in your wallet",
+      message: "Cancel request has been sent.We will verify and refound your amount",
     });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
+export const cancelRequests = async(req,res) => {
+ try {
+    
+ } catch (error) {
+  console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+ }
+}

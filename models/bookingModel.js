@@ -42,6 +42,9 @@ const bookingSchema = new mongoose.Schema({
   },
   cancelReason:{
     type:String,
+  },
+  cancelStatus:{
+    type:String
   }
 },{timestamps:true})
 

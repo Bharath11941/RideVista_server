@@ -21,6 +21,12 @@ const partnerSchema = new mongoose.Schema({
     type:Boolean,
     default:false
   },
+  report: [
+    { 
+      reportedBy: { type: mongoose.Types.ObjectId, ref: "user" },
+      reason : String
+    },
+  ],
   isBlocked:{
     type:Boolean,
     default:false

@@ -32,6 +32,10 @@ const bookingSchema = new mongoose.Schema({
     type:String,
     default:"Pending"
   },
+  method:{
+    type:String,
+    required:true
+  },
   pickUpLocation:{
     type:String,
     required:true

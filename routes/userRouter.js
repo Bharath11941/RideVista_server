@@ -1,5 +1,5 @@
 import express from 'express';
-import {userSignup,emailOtpVerification,resendOtp,loginVerification,userGoogleLogin,forgetPassword,resetPassword, homeCarList, carBooking, verifyBooking, filterCarDateLocation, myBookings, cancelBooking, getUserDetails, reviewCar} from "../controllers/userController.js"
+import {userSignup,emailOtpVerification,resendOtp,loginVerification,userGoogleLogin,forgetPassword,resetPassword, homeCarList, carBooking, verifyBooking, filterCarDateLocation, myBookings, cancelBooking, getUserDetails, reviewCar, reportCarOwner} from "../controllers/userController.js"
 import {userTokenVerify} from "../middlewares/authVerify.js"
 const userRoute = express()
 
@@ -18,7 +18,7 @@ userRoute.get("/myBookings/:userId",userTokenVerify,myBookings)
 userRoute.get('/userDetails/:id',userTokenVerify,getUserDetails)
 userRoute.post("/cancelBooking",userTokenVerify,cancelBooking)
 userRoute.put('/reviewCar',userTokenVerify,reviewCar)
-
+userRoute.patch("/reportOwner",userTokenVerify,reportCarOwner)
 export default userRoute
 
 

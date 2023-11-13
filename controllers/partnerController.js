@@ -407,6 +407,7 @@ export const deleteCarImage = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
+
 export const bookingListParner = async (req, res) => {
   try {
     const { partnerId } = req.params;
@@ -434,7 +435,16 @@ export const cancelBookingPartner = async (req, res) => {
     const userId = updataedData.user;
     await User.findByIdAndUpdate(
       { _id: userId },
-      { $inc: { wallet: updataedData.totalBookingCharge } }
+      {
+        $inc: { wallet: updataedData.totalBookingCharge },
+        $push: {
+          walletHistory: {
+            date: new Date(),
+            amount: +updataedData.totalBookingCharge,
+            description: `Refunded for cancel booking  - Booking Id: ${updataedData._id}`,
+          },
+        },
+      }
     );
     const bookingList = await Bookings.find({ partner: partner })
       .populate("car")
@@ -453,14 +463,16 @@ export const cancelBookingPartner = async (req, res) => {
 };
 export const cancelRequests = async (req, res) => {
   try {
-    const {partnerId} = req.params
-    console.log(partnerId,"from partner")
-    const totalRequests = await Bookings.find({ cancelStatus: "Pending",partner:partnerId })
+    const { partnerId } = req.params;
+    const totalRequests = await Bookings.find({
+      cancelStatus: "Pending",
+      partner: partnerId,
+    })
       .populate("car")
+      .populate("user")
       .sort({
         createdAt: -1,
       });
-      console.log(totalRequests,"from total")
     res.status(200).json({ totalRequests: totalRequests });
   } catch (error) {
     console.log(error.message);
@@ -479,21 +491,28 @@ export const apporveCancelRequest = async (req, res) => {
       const userId = updataedData.user;
       await User.findByIdAndUpdate(
         { _id: userId },
-        { $inc: { wallet: updataedData.totalBookingCharge } }
+        {
+          $inc: { wallet: updataedData.totalBookingCharge },
+          $push: {
+            walletHistory: {
+              date: new Date(),
+              amount: +updataedData.totalBookingCharge,
+              description: `Refunded for cancel booking  - Booking Id: ${updataedData._id}`,
+            },
+          },
+        }
       );
       const totalRequests = await Bookings.find({ cancelStatus: "Pending" })
         .populate("car")
         .sort({
           createdAt: -1,
         });
-      res
-        .status(200)
-        .json({
-          totalRequests: totalRequests,
-          message: "Cancel reuest has been appoved",
-        });
+      res.status(200).json({
+        totalRequests: totalRequests,
+        message: "Cancel reuest has been appoved",
+      });
     } else if (status === "Rejected") {
-     const updataedData = await Bookings.findByIdAndUpdate(
+      const updataedData = await Bookings.findByIdAndUpdate(
         { _id: bookingId },
         { $set: { cancelStatus: status } },
         { new: true }
@@ -503,12 +522,10 @@ export const apporveCancelRequest = async (req, res) => {
         .sort({
           createdAt: -1,
         });
-      res
-        .status(200)
-        .json({
-          totalRequests: totalRequests,
-          message: "Cancel reuest has been rejected",
-        });
+      res.status(200).json({
+        totalRequests: totalRequests,
+        message: "Cancel reuest has been rejected",
+      });
     }
   } catch (error) {}
 };
@@ -542,6 +559,31 @@ export const getReviews = async (req, res) => {
       select: "name",
     });
     res.status(200).json(carData);
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+};
+export const reportUser = async (req, res) => {
+  try {
+    const { userId, reason, partnerId } = req.body;
+    const userData = await User.findById(userId);
+    let alreadyReported = userData.report.find(
+      (user) => user.reportedBy.toString() === partnerId.toString()
+    );
+    if (alreadyReported) {
+      await User.updateOne(
+        { report: { $elemMatch: alreadyReported } },
+        { $set: { "report.$.reason": reason } }
+      );
+    } else {
+      await User.findByIdAndUpdate(userId, {
+        $push: {
+          report: { reason: reason, reportedBy: partnerId },
+        },
+      });
+    }
+    res.status(200).json({ message: "Successfully Reported User" });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });

@@ -1,5 +1,6 @@
 import securePassword from "../utils/securePassword.js";
 import sendEmail from "../utils/nodeMailer.js";
+import Partner from "../models/partnerModel.js";
 import User from "../models/userModel.js";
 import Otp from "../models/otpModel.js";
 import Car from "../models/carModel.js";
@@ -262,7 +263,9 @@ export const carBooking = async (req, res) => {
       userId,
       pickUpLocation,
       returnLocation,
+      walletChecked,
     } = req.body;
+    let method = walletChecked ? "Wallet" : "Razorpay"
     const booking = new Bookings({
       user: userId,
       partner: partnerId,
@@ -271,25 +274,66 @@ export const carBooking = async (req, res) => {
       startDate,
       endDate,
       pickUpLocation,
+      method,
       returnLocation,
     });
     const bookingData = await booking.save();
-    const instance = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_SECRET,
-    });
-    const options = {
-      amount: totalAmount * 100,
-      currency: "INR",
-      receipt: "" + bookingData._id,
-    };
-    instance.orders.create(options, function (err, booking) {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ message: "Something went wrong" });
-      }
-      res.status(200).json({ bookingData: booking });
-    });
+    if (walletChecked) {
+     const user =  await User.findByIdAndUpdate(
+        { _id: userId },
+        {
+          $push: {
+            walletHistory: {
+              date: new Date(),
+              amount:-totalAmount,
+              description: "Payment using wallet",
+            },
+          },
+          $inc:{wallet:-totalAmount}
+        },{new:true}
+      );
+      const bookingDetails = await Bookings.findByIdAndUpdate(
+        { _id: bookingData._id },
+        { $set: { bookingStatus: "Success" } },
+        { new: true }
+      );
+      const carDetails = await Car.findByIdAndUpdate(
+        { _id: _id },
+        {
+          $push: {
+            bookingDates: {
+              startDate: startDate,
+              endDate: endDate,
+            },
+          },
+        },
+        { new: true }
+      );
+      res.status(200).json({
+        message: "Your booking succeffully completed",
+        carDetails,
+        user,
+        bookingDetails,
+      });
+
+    } else {
+      const instance = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_SECRET,
+      });
+      const options = {
+        amount: totalAmount * 100,
+        currency: "INR",
+        receipt: "" + bookingData._id,
+      };
+      instance.orders.create(options, function (err, booking) {
+        if (err) {
+          console.log(err);
+          return res.status(500).json({ message: "Something went wrong" });
+        }
+        res.status(200).json({ bookingData: booking });
+      });
+    }
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -362,7 +406,9 @@ export const reviewCar = async (req, res) => {
       .reduce((prev, curr) => prev + curr, 0);
     const actualRating = (ratingSum / totalRating).toFixed(1);
     await Car.findByIdAndUpdate(carId, { $set: { totalRating: actualRating } });
-    res.status(200).json({message:"Thank you so much.Your review has been recieved"})
+    res
+      .status(200)
+      .json({ message: "Thank you so much.Your review has been recieved" });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -426,11 +472,13 @@ export const filterCarDateLocation = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 export const myBookings = async (req, res) => {
   try {
     const { userId } = req.params;
     const bookingList = await Bookings.find({ user: userId })
       .populate("car")
+      .populate("partner")
       .sort({
         createdAt: -1,
       });
@@ -448,10 +496,6 @@ export const cancelBooking = async (req, res) => {
       { new: true }
     );
     const userId = updataedData.user;
-    // await User.findByIdAndUpdate(
-    //   { _id: userId },
-    //   { $inc: { wallet: updataedData.totalBookingCharge } }
-    // );
     const bookingList = await Bookings.find({ user: userId })
       .populate("car")
       .sort({
@@ -460,18 +504,37 @@ export const cancelBooking = async (req, res) => {
 
     res.status(200).json({
       bookingList,
-      message: "Cancel request has been sent.We will verify and refound your amount",
+      message:
+        "Cancel request has been sent.We will verify and refound your amount",
     });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
-export const cancelRequests = async(req,res) => {
- try {
-    
- } catch (error) {
-  console.log(error.message);
+
+export const reportCarOwner = async (req, res) => {
+  try {
+    const { userId, reason, ownerId } = req.body;
+    const partnerData = await Partner.findById(ownerId);
+    let alreadyReported = partnerData.report.find(
+      (partner) => partner.reportedBy.toString() === userId.toString()
+    );
+    if (alreadyReported) {
+      await Partner.updateOne(
+        { report: { $elemMatch: alreadyReported } },
+        { $set: { "report.$.reason": reason } }
+      );
+    } else {
+      await Partner.findByIdAndUpdate(ownerId, {
+        $push: {
+          report: { reason: reason, reportedBy: userId },
+        },
+      });
+    }
+    res.status(200).json({ message: "Successfully Reported Owner" });
+  } catch (error) {
+    console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
- }
-}
+  }
+};

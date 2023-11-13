@@ -42,7 +42,10 @@ export const adminLogin = (req, res) => {
 
 export const usersList = async (req,res) => {
   try {
-    const users = await User.find()
+    const users = await User.find().populate({
+      path: "report.reportedBy",
+      select: "name",
+    })
     res.status(200).json({users})
   } catch (error) {
     console.log(error.message);
@@ -53,7 +56,10 @@ export const usersList = async (req,res) => {
 export const partnersList = async (req,res) => {
   try {
     
-    const partners = await Partner.find()
+    const partners = await Partner.find().populate({
+      path: "report.reportedBy",
+      select: "name",
+    })
     res.status(200).json({partners})
 
   } catch (error) {

@@ -93,7 +93,7 @@ export const loginVerification = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email });
     if (!user) {
-      return res.status(404).json({ message: "User not registered" });
+      return res.status(401).json({ message: "User not registered" });
     }
     if (user.isEmailVerified) {
       if (user.isBlocked === false) {
@@ -108,7 +108,7 @@ export const loginVerification = async (req, res) => {
           );
           res.status(200).json({ user, token, message: `Welome ${user.name}` });
         } else {
-          return res.status(401).json({ message: "Incorrect password" });
+          return res.status(403).json({ message: "Incorrect password" });
         }
       } else {
         return res.status(403).json({ message: "User is blocked by admin" });
@@ -127,7 +127,7 @@ export const userGoogleLogin = async (req, res) => {
     const { userEmail } = req.body;
     const registeredUser = await User.findOne({ email: userEmail });
     if (!registeredUser) {
-      return res.status(404).json({ message: "User is not regitered" });
+      return res.status(401).json({ message: "User is not regitered" });
     } else {
       if (registeredUser.isBlocked === true)
         return res.status(403).json({ message: "User is blocked " });

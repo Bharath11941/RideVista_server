@@ -95,7 +95,7 @@ export const partnerLoginVerify = async (req, res) => {
     const { email, password } = req.body;
     const partner = await Partner.findOne({ email: email });
     if (!partner) {
-      return res.status(404).json({ message: "Partner not registered" });
+      return res.status(401).json({ message: "Partner not registered" });
     }
     if (partner.isEmailVerified) {
       if (partner.isBlocked === false) {
@@ -122,8 +122,12 @@ export const partnerLoginVerify = async (req, res) => {
         } else {
           return res
             .status(403)
-            .json({ message: "Partner is blocked by admin" });
+            .json({ message: "Incorrect Password" });
         }
+      }else{
+        return res
+            .status(403)
+            .json({ message: "Partner is blocked by admin" });
       }
     } else {
       return res.status(401).json({ message: "Email is not verified" });
@@ -138,7 +142,7 @@ export const partnerLoginWithGoogle = async (req, res) => {
     const { partnerEmail } = req.body;
     const registeredPartner = await Partner.findOne({ email: partnerEmail });
     if (!registeredPartner) {
-      return res.status(404).json({ message: "Partner is not regitered" });
+      return res.status(401).json({ message: "Partner is not regitered" });
     } else {
       if (registeredPartner.isBlocked === true)
         return res.status(403).json({ message: "Partner is blocked " });
@@ -172,7 +176,7 @@ export const partnerForgotPass = async (req, res) => {
     const secret = process.env.PASSWORD_SECRET_PARTNER;
     const oldPartner = await Partner.findOne({ email: partnerEmail });
     if (!oldPartner) {
-      return res.status(404).json({ message: "Partner is not regitered" });
+      return res.status(401).json({ message: "Partner is not regitered" });
     }
     const token = jwt.sign({ id: oldPartner._id }, secret, { expiresIn: "5m" });
     let transporter = nodemailer.createTransport({
@@ -214,7 +218,7 @@ export const partnerResetPassword = async (req, res) => {
     const { id, token } = req.params;
     const partner = await Partner.findById(id);
     if (!partner) {
-      return res.status(404).json({ message: "partner not found" });
+      return res.status(401).json({ message: "partner not found" });
     }
     try {
       const verify = jwt.verify(token, process.env.PASSWORD_SECRET_PARTNER);

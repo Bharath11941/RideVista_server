@@ -24,11 +24,12 @@ export const adminLogin = (req, res) => {
             expiresIn: "1h",
           }
         );
+        fsf
         res
           .status(200)
           .json({ userName, token, message: `Welome ${userName}` });
       }else{
-        res.status(401).json({message:"Incorrect Password"})
+        res.status(403).json({message:"Incorrect Password"})
       }
     }else{
       res.status(401).json({message:"Incorrect email"})

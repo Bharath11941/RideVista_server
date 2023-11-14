@@ -32,6 +32,6 @@ const partnerSchema = new mongoose.Schema({
     default:false
   },
 
-})
+},{timestamps:true})
 
 export default mongoose.model("partner",partnerSchema)

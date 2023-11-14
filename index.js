@@ -26,10 +26,11 @@ app.use('/partner',partnerRoute)
 import adminRoute from"./routes/adminRouter.js"
 app.use('/admin',adminRoute)
 
+import chatRouter from './routes/chatRouter.js';
+app.use('/chat',chatRouter)
 
-app.get('/',(req,res)=>{
-  res.send("hello world from server")
-})
+import messageRouter from './routes/messageRouter.js';
+app.use('/message',messageRouter)
 
 app.listen(PORT,()=>{
   console.log(`server running on port http://localhost:${PORT}`);

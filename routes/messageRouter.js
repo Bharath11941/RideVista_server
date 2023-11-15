@@ -1,5 +1,5 @@
 import express from 'express'
-import { addMessage } from '../controllers/messageController.js'
+import { addMessage, getMessages } from '../controllers/messageController.js'
 
 const messageRouter = express.Router()
 
@@ -8,3 +8,5 @@ messageRouter.get('/:chatId',getMessages)
 
 
 export default messageRouter
+
+

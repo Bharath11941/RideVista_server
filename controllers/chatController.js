@@ -1,5 +1,6 @@
 import Chat from "../models/chatModel.js";
 import partnerModel from "../models/partnerModel.js";
+import userModel from "../models/userModel.js";
 
 export const createChat = async (req, res) => {
   try {
@@ -23,10 +24,22 @@ export const partnerData = async (req,res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+export const userData = async (req,res) => {
+  try {
+    const {id} = req.params
+    const result = await userModel.findOne({_id:id})
+    res.status(200).json(result)
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 export const userChats = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log(userId)
     const chat = await Chat.find({ members: { $in: [userId] } });
+    console.log(chat,"from userchats")
     res.status(200).json(chat)
   } catch (error) {
     console.log(error.message);

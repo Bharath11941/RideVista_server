@@ -24,7 +24,6 @@ export const adminLogin = (req, res) => {
             expiresIn: "1h",
           }
         );
-        fsf
         res
           .status(200)
           .json({ userName, token, message: `Welome ${userName}` });

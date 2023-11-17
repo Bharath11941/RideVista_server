@@ -11,6 +11,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import chatModel from "../models/chatModel.js";
 dotenv.config();
 let otpId;
 
@@ -265,7 +266,7 @@ export const carBooking = async (req, res) => {
       returnLocation,
       walletChecked,
     } = req.body;
-    let method = walletChecked ? "Wallet" : "Razorpay"
+    let method = walletChecked ? "Wallet" : "Razorpay";
     const booking = new Bookings({
       user: userId,
       partner: partnerId,
@@ -279,18 +280,19 @@ export const carBooking = async (req, res) => {
     });
     const bookingData = await booking.save();
     if (walletChecked) {
-     const user =  await User.findByIdAndUpdate(
+      const user = await User.findByIdAndUpdate(
         { _id: userId },
         {
           $push: {
             walletHistory: {
               date: new Date(),
-              amount:-totalAmount,
+              amount: -totalAmount,
               description: "Payment using wallet",
             },
           },
-          $inc:{wallet:-totalAmount}
-        },{new:true}
+          $inc: { wallet: -totalAmount },
+        },
+        { new: true }
       );
       const bookingDetails = await Bookings.findByIdAndUpdate(
         { _id: bookingData._id },
@@ -309,13 +311,20 @@ export const carBooking = async (req, res) => {
         },
         { new: true }
       );
+      const chatExist = await chatModel.findOne({
+        members: { $all: [userId, partnerId] },
+      });
+      if (!chatExist) {
+        const newChat = new chatModel({ members: [userId.toString(), partnerId.toString()] });
+        await newChat.save();
+      }
+
       res.status(200).json({
         message: "Your booking succeffully completed",
         carDetails,
         user,
         bookingDetails,
       });
-
     } else {
       const instance = new Razorpay({
         key_id: process.env.RAZORPAY_KEY_ID,
@@ -343,6 +352,7 @@ export const carBooking = async (req, res) => {
 export const verifyBooking = async (req, res) => {
   try {
     const { response, bookingData } = req.body;
+    console.log(bookingData, "from back end");
     let hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
     hmac.update(
       response.razorpay_order_id + "|" + response.razorpay_payment_id
@@ -366,6 +376,16 @@ export const verifyBooking = async (req, res) => {
         },
         { new: true }
       );
+      const chatExist = await chatModel.findOne({
+        members: { $all: [bookingDetails.user.toString(), bookingDetails.partner.toString()] },
+      });
+      if (!chatExist) {
+        const newChat = new chatModel({
+          members: [bookingDetails.user.toString(), bookingDetails.partner.toString()],
+        });
+        await newChat.save();
+      }
+
       res.status(200).json({
         message: "Your booking succeffully completed",
         carDetails,

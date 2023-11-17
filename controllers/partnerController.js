@@ -438,14 +438,15 @@ export const cancelBookingPartner = async (req, res) => {
     );
     const partner = updataedData.partner;
     const userId = updataedData.user;
+    const refoundAmount = 0.9 * updataedData.totalBookingCharge
     await User.findByIdAndUpdate(
       { _id: userId },
       {
-        $inc: { wallet: updataedData.totalBookingCharge },
+        $inc: { wallet:refoundAmount  },
         $push: {
           walletHistory: {
             date: new Date(),
-            amount: +updataedData.totalBookingCharge,
+            amount: +refoundAmount,
             description: `Refunded for cancel booking  - Booking Id: ${updataedData._id}`,
           },
         },
@@ -494,14 +495,15 @@ export const apporveCancelRequest = async (req, res) => {
         { new: true }
       );
       const userId = updataedData.user;
+      const refoundAmount = 0.9 * updataedData.totalBookingCharge
       await User.findByIdAndUpdate(
         { _id: userId },
         {
-          $inc: { wallet: updataedData.totalBookingCharge },
+          $inc: { wallet: refoundAmount },
           $push: {
             walletHistory: {
               date: new Date(),
-              amount: +updataedData.totalBookingCharge,
+              amount: +refoundAmount,
               description: `Refunded for cancel booking  - Booking Id: ${updataedData._id}`,
             },
           },

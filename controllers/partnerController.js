@@ -120,14 +120,10 @@ export const partnerLoginVerify = async (req, res) => {
             .status(200)
             .json({ partner, token, message: `Welome ${partner.name}` });
         } else {
-          return res
-            .status(403)
-            .json({ message: "Incorrect Password" });
+          return res.status(403).json({ message: "Incorrect Password" });
         }
-      }else{
-        return res
-            .status(403)
-            .json({ message: "Partner is blocked by admin" });
+      } else {
+        return res.status(403).json({ message: "Partner is blocked by admin" });
       }
     } else {
       return res.status(401).json({ message: "Email is not verified" });
@@ -330,31 +326,43 @@ export const editCar = async (req, res) => {
       modelType,
       carId,
     } = req.body;
-    const certificateFile = await cloudinary.uploader.upload(certificate, {
-      folder: "CarDocuments",
-    });
-    const uploadPromises = carImage.map((image) => {
-      return cloudinary.uploader.upload(image, {
-        folder: "CarImages",
-      });
-    });
-    // Wait for all the uploads to complete using Promise.all
-    const uploadedImages = await Promise.all(uploadPromises);
-    const existingCar = await Car.findById(carId);
+    let certificateFile;
     let existingImage = [];
-    if (
-      existingCar &&
-      existingCar.carImages &&
-      existingCar.carImages.length > 0
-    ) {
-      existingImage = existingCar.carImages;
-    }
 
-    // Store the URLs in the carImages array
-    let carImages = uploadedImages.map((image) => image.secure_url);
-    for (let i = 0; i < carImages.length; i++) {
-      existingImage.push(carImages[i]);
+    const existingCar = await Car.findById(carId);
+    if (certificate.length === 0) {
+      certificateFile = existingCar.certificate
+    }else{
+      certificateFile = await cloudinary.uploader.upload(certificate, {
+        folder: "CarDocuments",
+      })
     }
+    if (carImage.length === 0) {
+     existingImage = existingCar.carImages
+    }else{
+      const uploadPromises = carImage.map((image) => {
+        return cloudinary.uploader.upload(image, {
+          folder: "CarImages",
+        });
+      });
+      // Wait for all the uploads to complete using Promise.all
+      const uploadedImages = await Promise.all(uploadPromises);
+
+      if (
+        existingCar &&
+        existingCar.carImages &&
+        existingCar.carImages.length > 0
+      ) {
+        existingImage = existingCar.carImages;
+      }
+
+      // Store the URLs in the carImages array
+      let carImages = uploadedImages.map((image) => image.secure_url);
+      for (let i = 0; i < carImages.length; i++) {
+        existingImage.push(carImages[i]);
+      }
+    }
+    
     await Car.findByIdAndUpdate(
       { _id: carId },
       {
@@ -386,9 +394,7 @@ export const deleteCarImage = async (req, res) => {
     });
 
     if (deletionResult.result === "ok") {
-      console.log(
-        `Image at ${imageUrl} in CarImages successfully deleted from Cloudinary.`
-      );
+    
       const updatedData = await Car.findByIdAndUpdate(
         { _id: carId },
         { $pull: { carImages: imageUrl } },
@@ -438,11 +444,11 @@ export const cancelBookingPartner = async (req, res) => {
     );
     const partner = updataedData.partner;
     const userId = updataedData.user;
-    const refoundAmount = 0.9 * updataedData.totalBookingCharge
+    const refoundAmount = 0.9 * updataedData.totalBookingCharge;
     await User.findByIdAndUpdate(
       { _id: userId },
       {
-        $inc: { wallet:refoundAmount  },
+        $inc: { wallet: refoundAmount },
         $push: {
           walletHistory: {
             date: new Date(),
@@ -495,7 +501,7 @@ export const apporveCancelRequest = async (req, res) => {
         { new: true }
       );
       const userId = updataedData.user;
-      const refoundAmount = 0.9 * updataedData.totalBookingCharge
+      const refoundAmount = 0.9 * updataedData.totalBookingCharge;
       await User.findByIdAndUpdate(
         { _id: userId },
         {

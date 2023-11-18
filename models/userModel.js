@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  referalCode:{
+    type:String,
+    required:true,
+    unique:true
+  },
   isEmailVerified: {
     type: Boolean,
     default: false,

@@ -12,12 +12,17 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import chatModel from "../models/chatModel.js";
+import { generateReferralCode } from "../utils/randomCode.js";
 dotenv.config();
 let otpId;
 
 export const userSignup = async (req, res) => {
+  
+    
   try {
-    const { name, email, mobile, password } = req.body;
+    const { name, email, mobile, password,referralCode } = req.body;
+    const ownReferalCode = generateReferralCode(name)
+    let referrer;
     const hashedPassword = await securePassword(password);
     const emailExist = await User.findOne({ email: email });
     if (emailExist) {
@@ -25,14 +30,34 @@ export const userSignup = async (req, res) => {
         .status(409)
         .json({ status: "User already registered with this email" });
     }
-
+    if (referralCode) {
+      referrer = await User.findOne({ referalCode: referralCode });
+  
+      if (!referrer) {
+        return res.status(400).json({ error: 'Invalid referral code.' });
+      }
+    }
     const user = new User({
       name: name,
       email: email,
       mobile: mobile,
       password: hashedPassword,
+      referalCode:ownReferalCode
     });
     const userData = await user.save();
+    if (referrer) {
+      // Increase the wallet of the referring user by 50 rupees
+      await User.updateOne(
+        { _id: referrer._id },
+        { $inc: { wallet: 50 } }
+      );
+  
+      // Increase the wallet of the new user by 50 rupees
+      await User.updateOne(
+        { _id: userData._id },
+        { $inc: { wallet: 50 } }
+      );
+    }
     otpId = await sendEmail(userData.name, userData.email, userData._id);
 
     res.status(201).json({

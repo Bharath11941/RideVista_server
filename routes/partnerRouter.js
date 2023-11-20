@@ -1,7 +1,7 @@
 import express from 'express';
 const partnerRoute = express()
 import { partnerTokenVerify } from '../middlewares/authVerify.js';
-import {partnerRegister,partnerEmailVerify,partnerResendOtp,partnerResetPassword,partnerLoginVerify,partnerLoginWithGoogle,addCar, MyCarListDetails, editcarDetails, editCar,partnerForgotPass, deleteCarImage, bookingListParner, cancelBookingPartner, changeBookingStatus, getReviews, cancelRequests, apporveCancelRequest, reportUser} from "../controllers/partnerController.js"
+import {partnerRegister,partnerEmailVerify,partnerResendOtp,partnerResetPassword,partnerLoginVerify,partnerLoginWithGoogle,addCar, MyCarListDetails, editcarDetails, editCar,partnerForgotPass, deleteCarImage, bookingListParner, cancelBookingPartner, changeBookingStatus, getReviews, cancelRequests, apporveCancelRequest, reportUser, partnerReport} from "../controllers/partnerController.js"
 
 
 partnerRoute.post('/signup',partnerRegister)
@@ -23,6 +23,7 @@ partnerRoute.get('/getReviews/:id',partnerTokenVerify,getReviews)
 partnerRoute.get('/cancelRequests/:partnerId',partnerTokenVerify,cancelRequests)
 partnerRoute.patch('/approveCancel',partnerTokenVerify,apporveCancelRequest)
 partnerRoute.patch('/reportUser',partnerTokenVerify,reportUser)
+partnerRoute.get('/report/:partnerId',partnerTokenVerify,partnerReport)
 
 export default partnerRoute
 

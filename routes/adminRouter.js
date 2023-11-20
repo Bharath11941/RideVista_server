@@ -8,7 +8,9 @@ import {
   partnerBlock,
   carsList,
   singleCarDetails,
-  verifyCarDetails
+  verifyCarDetails,
+  AdminReport,
+  totalBookings
 } from "../controllers/adminController.js";
 import { adminTokenVerify } from "../middlewares/authVerify.js";
 adminRoute.post("/login", adminLogin);
@@ -19,4 +21,6 @@ adminRoute.get('/singleCarDetails/:carId',adminTokenVerify,singleCarDetails)
 adminRoute.patch('/verifyCar',adminTokenVerify,verifyCarDetails)
 adminRoute.patch("/blockUser", adminTokenVerify, userBlock);
 adminRoute.patch("/blockPartner", adminTokenVerify, partnerBlock);
+adminRoute.get('/report',adminTokenVerify,AdminReport)
+adminRoute.get('/bookings',adminTokenVerify,totalBookings)
 export default adminRoute;

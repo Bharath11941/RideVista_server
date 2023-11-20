@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import User from "../models/userModel.js";
+import mongoose from "mongoose";
 dotenv.config();
 let otpId;
 
@@ -426,7 +427,7 @@ export const bookingListParner = async (req, res) => {
       .populate("car")
       .populate("user")
       .sort({
-        timestampField: -1,
+        createdAt: -1,
       });
 
     res.status(200).json({ bookingList });
@@ -602,3 +603,176 @@ export const reportUser = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
+export const partnerReport = async (req,res) => {
+  try {
+    const {partnerId} = req.params
+
+    // car Count
+    const cars = await Car.find({partnerId:partnerId})
+    
+
+    // total revenue
+    const totalRevenue = await Bookings.aggregate([
+      {
+        $match: {
+          bookingStatus: { $ne: 'Cancelled' },
+          partner: new mongoose.Types.ObjectId(partnerId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: {
+            $sum: {
+              $multiply: ['$totalBookingCharge', 0.8], // 80% of totalBookingCharge
+            },
+          },
+          totalBookings: { $sum: 1 }, // Counting the number of bookings
+        },
+      },
+    ]);
+
+    //current month revenue
+
+
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const earningsByMonth = await Bookings.aggregate([
+      {
+        $match: {
+          bookingStatus: { $ne: "Cancelled" },
+          partner: new mongoose.Types.ObjectId(partnerId),
+          $expr: { $eq: [{ $month: "$createdAt" }, currentMonth] },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          monthlyEarnings: {
+            $sum: { $multiply: ["$totalBookingCharge", 0.8] },
+          },
+        },
+      },
+    ]);
+
+    const currentMonthEarnings = earningsByMonth.find(
+      (monthEarnings) => monthEarnings._id === currentMonth
+    );
+    
+    const monthName = currentDate.toLocaleString("default", { month: "long" });
+
+
+    //current Day revenue
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayRevenue = await Bookings.aggregate([
+      {
+        $match: {
+          bookingStatus: { $ne: 'Cancelled' },
+          partner: new mongoose.Types.ObjectId(partnerId),
+          createdAt: { $gte: today }, // Filter by today's date
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          todayEarnings: {
+            $sum: { $multiply: ["$totalBookingCharge", 0.8] },
+          },
+          todayBookings: { $sum: 1 }, // Counting the number of bookings
+        },
+      },
+    ]);
+    let sales = [];
+    let date = new Date();
+    let year = date.getFullYear();
+    let currentYear = new Date(year, 0, 1);
+    let salesByYear = await Bookings.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: currentYear },
+          bookingStatus: { $ne: 'Cancelled' },
+          partner: new mongoose.Types.ObjectId(partnerId),
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%m", date: "$createdAt" } },
+          total: {  $sum: { $multiply: ["$totalBookingCharge", 0.8] },},
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+    for (let i = 1; i <= 12; i++) {
+      let result = true;
+      for (let j = 0; j < salesByYear.length; j++) {
+        result = false;
+        if (salesByYear[j]._id == i) {
+          sales.push(salesByYear[j]);
+          break;
+        } else {
+          result = true;
+        }
+      }
+      if (result) sales.push({ _id: i, total: 0, count: 0 });
+    }
+    let salesData = [];
+    for (let i = 0; i < sales.length; i++) {
+      salesData.push(sales[i].total);
+    }
+    
+    /// booking status count
+    const bookingStatusCounts = await Bookings.aggregate([
+      {
+        $group: {
+          _id: "$bookingStatus",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          counts: {
+            $push: {
+              k: "$_id",
+              v: "$count",
+            },
+          },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $arrayToObject: "$counts",
+          },
+        },
+      },
+      {
+        $project: {
+          Cancelled: { $ifNull: ["$Cancelled", 0] },
+          Returned: { $ifNull: ["$Returned", 0] },
+          Delivered: { $ifNull: ["$Delivered", 0] },
+          Success: { $ifNull: ["$Success", 0] },
+        },
+      },
+    ]);
+    
+
+
+    const result = {
+      totalRevenue: totalRevenue[0] || { totalEarnings: 0, totalBookings: 0 },
+      currentMonthEarnings: currentMonthEarnings || { monthlyEarnings: 0 },
+      currentMonthName: monthName,
+      todayRevenue:todayRevenue[0] || {todayEarnings:0,todayBookings:0},
+      cars,
+      salesData,
+      bookingStatusCounts: bookingStatusCounts[0] || { Cancelled: 0, Returned: 0, Delivered: 0, Success: 0 },
+    };
+    res.status(200).json(result)
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
+}

@@ -1,8 +1,14 @@
 import express from 'express';
+import socketConnection from './socketIo.js';
+import userRoute from "./routes/userRouter.js"
+import partnerRoute from "./routes/partnerRouter.js"
+import adminRoute from"./routes/adminRouter.js"
+import chatRouter from './routes/chatRouter.js';
+import messageRouter from './routes/messageRouter.js';
 const app = express()
 const PORT = process.env.PORT || 3000
 import cors from 'cors'
-
+import http from 'http'
 
 
 import dbconnect from "./config/mongodb.js"
@@ -17,21 +23,15 @@ app.use(cors({
 app.use(express.json({limit:"50mb"}))
 app.use(express.urlencoded({limit:'50mb',extended:true}))
 
-import userRoute from "./routes/userRouter.js"
+
 app.use("/",userRoute)
-
-import partnerRoute from "./routes/partnerRouter.js"
 app.use('/partner',partnerRoute)
-
-import adminRoute from"./routes/adminRouter.js"
 app.use('/admin',adminRoute)
-
-import chatRouter from './routes/chatRouter.js';
 app.use('/chat',chatRouter)
-
-import messageRouter from './routes/messageRouter.js';
 app.use('/message',messageRouter)
 
-app.listen(PORT,()=>{
+const server = http.createServer(app)
+socketConnection(server)
+server.listen(PORT,()=>{
   console.log(`server running on port http://localhost:${PORT}`);
 })

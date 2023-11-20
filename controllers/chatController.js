@@ -37,9 +37,7 @@ export const userData = async (req,res) => {
 export const userChats = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(userId)
-    const chat = await Chat.find({ members: { $in: [userId] } });
-    console.log(chat,"from userchats")
+    const chat = await Chat.find({ members: { $in: [userId] } }).sort({ timestamp: -1 });
     res.status(200).json(chat)
   } catch (error) {
     console.log(error.message);

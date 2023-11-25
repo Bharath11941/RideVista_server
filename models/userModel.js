@@ -36,6 +36,9 @@ const userSchema = new mongoose.Schema({
       reason : String
     },
   ],
+  profileImage:{
+    type:String
+  },
   walletHistory: [
     {
       date: {

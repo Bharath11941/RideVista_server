@@ -19,7 +19,7 @@ export const userTokenVerify = async (req, res, next) => {
     if (verified.role == "user") {
       const user = await User.findOne({ email: verified.email });
       if (user.isBlocked) {
-        return res.status(403).json({ message: "User is blocked " });
+        return res.status(403).json({ message: "User is blocked" });
       } else {
         next();
       }

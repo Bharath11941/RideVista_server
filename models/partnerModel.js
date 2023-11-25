@@ -27,6 +27,9 @@ const partnerSchema = new mongoose.Schema({
       reason : String
     },
   ],
+  profileImage:{
+    type:String
+  },
   isBlocked:{
     type:Boolean,
     default:false

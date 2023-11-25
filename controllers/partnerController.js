@@ -307,7 +307,9 @@ export const editcarDetails = async (req, res) => {
     if (car) {
       return res.status(200).json({ car });
     }
-    return res.status(404).json({ message: "Car not found" });
+      return res.status(404).json({ message: "Car not found" });
+  
+    
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
@@ -332,15 +334,15 @@ export const editCar = async (req, res) => {
 
     const existingCar = await Car.findById(carId);
     if (certificate.length === 0) {
-      certificateFile = existingCar.certificate
-    }else{
+      certificateFile = existingCar.certificate;
+    } else {
       certificateFile = await cloudinary.uploader.upload(certificate, {
         folder: "CarDocuments",
-      })
+      });
     }
     if (carImage.length === 0) {
-     existingImage = existingCar.carImages
-    }else{
+      existingImage = existingCar.carImages;
+    } else {
       const uploadPromises = carImage.map((image) => {
         return cloudinary.uploader.upload(image, {
           folder: "CarImages",
@@ -363,7 +365,7 @@ export const editCar = async (req, res) => {
         existingImage.push(carImages[i]);
       }
     }
-    
+
     await Car.findByIdAndUpdate(
       { _id: carId },
       {
@@ -395,7 +397,6 @@ export const deleteCarImage = async (req, res) => {
     });
 
     if (deletionResult.result === "ok") {
-    
       const updatedData = await Car.findByIdAndUpdate(
         { _id: carId },
         { $pull: { carImages: imageUrl } },
@@ -578,6 +579,47 @@ export const getReviews = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
+export const updateProfileImage = async (req, res) => {
+  try {
+    const { partnerId, image, prevImg } = req.body;
+    try {
+      if (prevImg) {
+        const publicId = prevImg.match(/\/v\d+\/(.+?)\./)[1]; // Extract public ID from URL
+
+        const deletionResult = await cloudinary.uploader.destroy(publicId, {
+          folder: "profileImage", // Optional, specify the folder if necessary
+        });
+      }
+      const profileFile = await cloudinary.uploader.upload(image, {
+        folder: "profileImage",
+      });
+      const userData = await Partner.findByIdAndUpdate(
+        { _id: partnerId },
+        { $set: { profileImage: profileFile.secure_url } },
+        { new: true }
+      );
+      return res.status(200).json({ userData });
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      return res
+        .status(500)
+        .json({ message: "Error uploading image to Cloudinary" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const updateProfile = async (req,res) => {
+  try {
+    const {email,name,mobile} = req.body
+    const partnerData = await Partner.findOneAndUpdate({email:email},{$set:{name,mobile}},{new:true})
+    return res.status(200).json({ partnerData });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 export const reportUser = async (req, res) => {
   try {
     const { userId, reason, partnerId } = req.body;
@@ -603,19 +645,18 @@ export const reportUser = async (req, res) => {
     res.status(500).json({ status: "Internal Server Error" });
   }
 };
-export const partnerReport = async (req,res) => {
+export const partnerReport = async (req, res) => {
   try {
-    const {partnerId} = req.params
+    const { partnerId } = req.params;
 
     // car Count
-    const cars = await Car.find({partnerId:partnerId})
-    
+    const cars = await Car.find({ partnerId: partnerId });
 
     // total revenue
     const totalRevenue = await Bookings.aggregate([
       {
         $match: {
-          bookingStatus: { $ne: 'Cancelled' },
+          bookingStatus: { $ne: "Cancelled" },
           partner: new mongoose.Types.ObjectId(partnerId),
         },
       },
@@ -624,7 +665,7 @@ export const partnerReport = async (req,res) => {
           _id: null,
           totalEarnings: {
             $sum: {
-              $multiply: ['$totalBookingCharge', 0.8], // 80% of totalBookingCharge
+              $multiply: ["$totalBookingCharge", 0.8], // 80% of totalBookingCharge
             },
           },
           totalBookings: { $sum: 1 }, // Counting the number of bookings
@@ -633,7 +674,6 @@ export const partnerReport = async (req,res) => {
     ]);
 
     //current month revenue
-
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
@@ -658,9 +698,8 @@ export const partnerReport = async (req,res) => {
     const currentMonthEarnings = earningsByMonth.find(
       (monthEarnings) => monthEarnings._id === currentMonth
     );
-    
-    const monthName = currentDate.toLocaleString("default", { month: "long" });
 
+    const monthName = currentDate.toLocaleString("default", { month: "long" });
 
     //current Day revenue
     const today = new Date();
@@ -669,7 +708,7 @@ export const partnerReport = async (req,res) => {
     const todayRevenue = await Bookings.aggregate([
       {
         $match: {
-          bookingStatus: { $ne: 'Cancelled' },
+          bookingStatus: { $ne: "Cancelled" },
           partner: new mongoose.Types.ObjectId(partnerId),
           createdAt: { $gte: today }, // Filter by today's date
         },
@@ -692,14 +731,14 @@ export const partnerReport = async (req,res) => {
       {
         $match: {
           createdAt: { $gte: currentYear },
-          bookingStatus: { $ne: 'Cancelled' },
+          bookingStatus: { $ne: "Cancelled" },
           partner: new mongoose.Types.ObjectId(partnerId),
         },
       },
       {
         $group: {
           _id: { $dateToString: { format: "%m", date: "$createdAt" } },
-          total: {  $sum: { $multiply: ["$totalBookingCharge", 0.8] },},
+          total: { $sum: { $multiply: ["$totalBookingCharge", 0.8] } },
           count: { $sum: 1 },
         },
       },
@@ -722,7 +761,7 @@ export const partnerReport = async (req,res) => {
     for (let i = 0; i < sales.length; i++) {
       salesData.push(sales[i].total);
     }
-    
+
     /// booking status count
     const bookingStatusCounts = await Bookings.aggregate([
       {
@@ -758,21 +797,24 @@ export const partnerReport = async (req,res) => {
         },
       },
     ]);
-    
-
 
     const result = {
       totalRevenue: totalRevenue[0] || { totalEarnings: 0, totalBookings: 0 },
       currentMonthEarnings: currentMonthEarnings || { monthlyEarnings: 0 },
       currentMonthName: monthName,
-      todayRevenue:todayRevenue[0] || {todayEarnings:0,todayBookings:0},
+      todayRevenue: todayRevenue[0] || { todayEarnings: 0, todayBookings: 0 },
       cars,
       salesData,
-      bookingStatusCounts: bookingStatusCounts[0] || { Cancelled: 0, Returned: 0, Delivered: 0, Success: 0 },
+      bookingStatusCounts: bookingStatusCounts[0] || {
+        Cancelled: 0,
+        Returned: 0,
+        Delivered: 0,
+        Success: 0,
+      },
     };
-    res.status(200).json(result)
+    res.status(200).json(result);
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
   }
-}
+};

@@ -13,6 +13,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import chatModel from "../models/chatModel.js";
 import { generateReferralCode } from "../utils/randomCode.js";
+import cloudinary from "../utils/cloudinary.js";
 dotenv.config();
 let otpId;
 
@@ -49,7 +50,13 @@ export const userSignup = async (req, res) => {
       // Increase the wallet of the referring user by 50 rupees
       await User.updateOne(
         { _id: referrer._id },
-        { $inc: { wallet: 50 } }
+        { $inc: { wallet: 50 } ,$push: {
+          walletHistory: {
+            date: new Date(),
+            amount: +50,
+            description: ``,
+          },
+        },}
       );
   
       // Increase the wallet of the new user by 50 rupees
@@ -256,6 +263,7 @@ export const resetPassword = async (req, res) => {
 export const getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(id,"from")
     const userData = await User.findOne({ _id: id });
     res.status(200).json({ userData });
   } catch (error) {
@@ -263,6 +271,48 @@ export const getUserDetails = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const updateProfileImage = async (req,res) => {
+  try {
+    const { userId,image,prevImg } = req.body;
+    try {
+      if(prevImg){
+        const publicId = prevImg.match(/\/v\d+\/(.+?)\./)[1]; // Extract public ID from URL
+
+        const deletionResult = await cloudinary.uploader.destroy(publicId, {
+          folder: "profileImage", // Optional, specify the folder if necessary
+        });
+      }
+    
+
+      const profileFile = await cloudinary.uploader.upload(image, {
+        folder: "profileImage",
+      });
+      const userData = await User.findByIdAndUpdate({_id:userId},{$set:{profileImage:profileFile.secure_url}},{new:true})
+      return res.status(200).json({ userData });
+   
+      
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      return res.status(500).json({ message: "Error uploading image to Cloudinary" });
+    }
+    
+
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+export const updateProfile = async (req,res) => {
+  try {
+    const {email,name,mobile} = req.body
+    const userData = await User.findOneAndUpdate({email:email},{$set:{name,mobile}},{new:true})
+    return res.status(200).json({ userData });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 export const homeCarList = async (req, res) => {
   try {
     const carData = await Car.find().populate("partnerId").limit(6);

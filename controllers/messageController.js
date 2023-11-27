@@ -4,6 +4,7 @@ export const addMessage = async (req,res) => {
   try {
     const {chatId,text,senderId} = req.body
     const message = new Message({chatId,text,senderId})
+
     const result = await message.save()
     res.status(200).json(result)
   } catch (error) {

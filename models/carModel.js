@@ -47,6 +47,7 @@ const carSchema = new mongoose.Schema({
       star: Number,
       description: String,
       postedBy: { type: mongoose.Types.ObjectId, ref: "user" },
+      postedDate: { type: Date}
     },
   ],
   totalRating:{

@@ -37,8 +37,45 @@ export const userData = async (req,res) => {
 export const userChats = async (req, res) => {
   try {
     const { userId } = req.params;
-    const chat = await Chat.find({ members: { $in: [userId] } }).sort({ timestamp: -1 });
-    res.status(200).json(chat)
+    // const chat = await Chat.find({ members: { $in: [userId] } }).sort({ timestamp: -1 });
+    // console.log(chat,'chat')
+    // res.status(200).json(chat)
+    const chats = await Chat.aggregate([
+      {
+        $match: { members: userId },
+      },
+      {
+        $lookup: {
+          from: 'messages', // Replace with the actual name of your messages collection
+          let: { chatIdToString: { $toString: '$_id' } }, // Convert _id to string
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$chatId", "$$chatIdToString"] }, // Match on the converted chatId
+              },
+            },
+            {
+              $sort: { createdAt: -1 }, // Sort messages in descending order based on timestamp
+            },
+            {
+              $limit: 1, // Get only the latest message
+            },
+          ],
+          as: 'messages',
+        },
+      },
+      {
+        $addFields: {
+          lastMessageTimestamp: {
+            $ifNull: [{ $first: '$messages.createdAt' }, null],
+          },
+        },
+      },
+      {
+        $sort: { lastMessageTimestamp: -1 }, // Sort chats based on the latest message timestamp
+      },
+    ]);
+    res.status(200).json(chats);
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -55,3 +92,7 @@ export const findChat = async (req,res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+
+
+

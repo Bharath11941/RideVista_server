@@ -32,32 +32,11 @@ function socketConnection(server) {
     
 
     socket.on("send_message", (data) => {
+      console.log(data,"message")
       socket.to(123).emit("recieve_message", data);
     });
 
-    //socket for video call
 
-    socket.on('me',(conversation) => {
-      socket.join(conversation)
-      
-    }) 
-
-    socket.on('disconnect',()=>{
-      socket.broadcast.emit('callended')
-    })
-
-    // socket.on('callended',(id)=>{
-    //   socket.broadcast.to(id).emit('callended',id)
-    //   socket.leave(id)
-    //   console.log(id,"call ended")
-    // })
-    socket.on('calluser',({from,userToCall,signalData,name})=>{
-      io.to(userToCall).emit('calluser',{signal:signalData,from,name})
-    })
-    socket.on('answercall',(data)=>{
-      console.log('answercall on')
-      io.to(data.to).emit('callaccepted',data.signal)
-    })
   });
 }
 

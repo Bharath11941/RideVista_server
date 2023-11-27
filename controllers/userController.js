@@ -14,6 +14,7 @@ import bcrypt from "bcrypt";
 import chatModel from "../models/chatModel.js";
 import { generateReferralCode } from "../utils/randomCode.js";
 import cloudinary from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 dotenv.config();
 let otpId;
 
@@ -29,13 +30,13 @@ export const userSignup = async (req, res) => {
     if (emailExist) {
       return res
         .status(409)
-        .json({ status: "User already registered with this email" });
+        .json({ message: "User already registered with this email" });
     }
     if (referralCode) {
       referrer = await User.findOne({ referalCode: referralCode });
   
       if (!referrer) {
-        return res.status(400).json({ error: 'Invalid referral code.' });
+        return res.status(400).json({ message: 'Invalid referral code.' });
       }
     }
     const user = new User({
@@ -54,7 +55,7 @@ export const userSignup = async (req, res) => {
           walletHistory: {
             date: new Date(),
             amount: +50,
-            description: ``,
+            description: `Money credited through refferring ${userData.name}`,
           },
         },}
       );
@@ -62,7 +63,13 @@ export const userSignup = async (req, res) => {
       // Increase the wallet of the new user by 50 rupees
       await User.updateOne(
         { _id: userData._id },
-        { $inc: { wallet: 50 } }
+        { $inc: { wallet: 50 },$push: {
+          walletHistory: {
+            date: new Date(),
+            amount: +50,
+            description: `Money credited through refferal code of ${referrer.name} `,
+          },
+        } }
       );
     }
     otpId = await sendEmail(userData.name, userData.email, userData._id);
@@ -74,7 +81,7 @@ export const userSignup = async (req, res) => {
     });
   } catch (error) {
     console.log(error.message);
-    res.status(500).json({ status: "Internal Server Error" });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 export const emailOtpVerification = async (req, res) => {
@@ -485,7 +492,7 @@ export const reviewCar = async (req, res) => {
     if (alreadyRated) {
       await Car.updateOne(
         { ratings: { $elemMatch: alreadyRated } },
-        { $set: { "ratings.$.star": rating, "ratings.$.description": reason } }
+        { $set: { "ratings.$.star": rating, "ratings.$.description": reason,"ratings.$.postedDate":Date.now() } }
       );
     } else {
       await Car.findByIdAndUpdate(carId, {
@@ -509,6 +516,40 @@ export const reviewCar = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+export const carRatings = async (req,res) => {
+  try {
+    const {id} = req.params
+    const car = await Car.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id) } },
+      { $unwind: "$ratings" },
+      { $sort: { "ratings.postedDate": -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "users", // Assuming your user collection is named "users"
+          localField: "ratings.postedBy",
+          foreignField: "_id",
+          as: "ratings.postedBy",
+        },
+      },
+      { $unwind: "$ratings.postedBy" },
+      {
+        $group: {
+          _id: "$_id",
+          ratings: { $push: "$ratings" },
+        },
+      },
+    ]);
+
+    // Extract the ratings array from the result
+    const ratings = car.length > 0 ? car[0].ratings : [];
+
+    res.status(200).json(ratings)
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 
 export const filterCarDateLocation = async (req, res) => {
   try {

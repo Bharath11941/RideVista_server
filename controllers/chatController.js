@@ -2,18 +2,7 @@ import Chat from "../models/chatModel.js";
 import partnerModel from "../models/partnerModel.js";
 import userModel from "../models/userModel.js";
 
-export const createChat = async (req, res) => {
-  try {
-    const { senderId, recieverId } = req.body;
-    const newChat = new Chat({ members: [senderId, recieverId] });
-    const result = await newChat.save();
 
-    res.status(200).json(result);
-  } catch (error) {
-    console.log(error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 export const partnerData = async (req,res) => {
   try {
     const {id} = req.params
@@ -37,9 +26,7 @@ export const userData = async (req,res) => {
 export const userChats = async (req, res) => {
   try {
     const { userId } = req.params;
-    // const chat = await Chat.find({ members: { $in: [userId] } }).sort({ timestamp: -1 });
-    // console.log(chat,'chat')
-    // res.status(200).json(chat)
+
     const chats = await Chat.aggregate([
       {
         $match: { members: userId },
@@ -82,16 +69,6 @@ export const userChats = async (req, res) => {
   }
 };
 
-export const findChat = async (req,res) => {
-  try {
-    const {firstId,secondId} = req.params
-    const chat = await Chat.findOne({members:{$all:[firstId,secondId]}})
-    res.status(200).json(chat)
-  } catch (error) {
-    console.log(error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-}
 
 
 

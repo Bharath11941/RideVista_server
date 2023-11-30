@@ -16,7 +16,7 @@ let otpId;
 
 export const partnerRegister = async (req, res) => {
   try {
-    const { name, email, mobile, password } = req.body;
+    const { name, email, mobile, password } = req.sanitisedData;
     const hashedPassword = await securePassword(password);
     const emailExist = await Partner.findOne({ email: email });
     if (emailExist) {
@@ -49,7 +49,7 @@ export const partnerRegister = async (req, res) => {
 };
 export const partnerEmailVerify = async (req, res) => {
   try {
-    const { otp, partnerId } = req.body;
+    const { otp, partnerId } = req.sanitisedData;
     const otpData = await Otp.find({ userId: partnerId });
     const { expiresAt } = otpData[otpData.length - 1];
     const correctOtp = otpData[otpData.length - 1].otp;
@@ -59,7 +59,7 @@ export const partnerEmailVerify = async (req, res) => {
 
     if (correctOtp === otp) {
       await Otp.deleteMany({ userId: partnerId });
-      const partnerData = await Partner.updateOne(
+      await Partner.updateOne(
         { _id: partnerId },
         { $set: { isEmailVerified: true } }
       );
@@ -77,7 +77,7 @@ export const partnerEmailVerify = async (req, res) => {
 };
 export const partnerResendOtp = async (req, res) => {
   try {
-    const { partnerEmail } = req.body;
+    const { partnerEmail } = req.sanitisedData;
     const { _id, name, email } = await Partner.findOne({ email: partnerEmail });
     const otpId = partnerSendEmail(name, email, _id);
     if (otpId) {
@@ -93,7 +93,7 @@ export const partnerResendOtp = async (req, res) => {
 
 export const partnerLoginVerify = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.sanitisedData;
     const partner = await Partner.findOne({ email: email });
     if (!partner) {
       return res.status(401).json({ message: "Partner not registered" });
@@ -136,7 +136,7 @@ export const partnerLoginVerify = async (req, res) => {
 };
 export const partnerLoginWithGoogle = async (req, res) => {
   try {
-    const { partnerEmail } = req.body;
+    const { partnerEmail } = req.sanitisedData;
     const registeredPartner = await Partner.findOne({ email: partnerEmail });
     if (!registeredPartner) {
       return res.status(401).json({ message: "Partner is not regitered" });
@@ -169,7 +169,7 @@ export const partnerLoginWithGoogle = async (req, res) => {
 };
 export const partnerForgotPass = async (req, res) => {
   try {
-    const { partnerEmail } = req.body;
+    const { partnerEmail } = req.sanitisedData;
     const secret = process.env.PASSWORD_SECRET_PARTNER;
     const oldPartner = await Partner.findOne({ email: partnerEmail });
     if (!oldPartner) {
@@ -183,14 +183,12 @@ export const partnerForgotPass = async (req, res) => {
         pass: process.env.EMAIL_PASSWORD,
       },
     });
-    console.log("after transpot");
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: partnerEmail,
       subject: "Forgot password",
       text: `http://localhost:5173/partner/partnerReset/${oldPartner._id}/${token}`,
     };
-    console.log("after mailoptons");
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.error("Error sending email:", error);
@@ -212,7 +210,7 @@ export const partnerForgotPass = async (req, res) => {
 
 export const partnerResetPassword = async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password } = req.sanitisedData;
     const { id, token } = req.params;
     const partner = await Partner.findById(id);
     if (!partner) {
@@ -251,7 +249,7 @@ export const addCar = async (req, res) => {
       transitionType,
       modelType,
       partnerId,
-    } = req.body;
+    } = req.sanitisedData;
     const certificateFile = await cloudinary.uploader.upload(certificate, {
       folder: "CarDocuments",
     });
@@ -307,9 +305,7 @@ export const editcarDetails = async (req, res) => {
     if (car) {
       return res.status(200).json({ car });
     }
-      return res.status(404).json({ message: "Car not found" });
-  
-    
+    return res.status(404).json({ message: "Car not found" });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ status: "Internal Server Error" });
@@ -328,7 +324,7 @@ export const editCar = async (req, res) => {
       transitionType,
       modelType,
       carId,
-    } = req.body;
+    } = req.sanitisedData;
     let certificateFile;
     let existingImage = [];
 
@@ -438,7 +434,7 @@ export const bookingListParner = async (req, res) => {
 };
 export const cancelBookingPartner = async (req, res) => {
   try {
-    const { bookingId, reason } = req.body;
+    const { bookingId, reason } = req.sanitisedData;
     const updataedData = await Bookings.findByIdAndUpdate(
       { _id: bookingId },
       { $set: { cancelReason: reason, bookingStatus: "Cancelled" } },
@@ -527,7 +523,7 @@ export const apporveCancelRequest = async (req, res) => {
         message: "Cancel reuest has been appoved",
       });
     } else if (status === "Rejected") {
-      const updataedData = await Bookings.findByIdAndUpdate(
+      await Bookings.findByIdAndUpdate(
         { _id: bookingId },
         { $set: { cancelStatus: status } },
         { new: true }
@@ -581,12 +577,12 @@ export const getReviews = async (req, res) => {
 };
 export const updateProfileImage = async (req, res) => {
   try {
-    const { partnerId, image, prevImg } = req.body;
+    const { partnerId, image, prevImg } = req.sanitisedData;
     try {
       if (prevImg) {
         const publicId = prevImg.match(/\/v\d+\/(.+?)\./)[1]; // Extract public ID from URL
 
-        const deletionResult = await cloudinary.uploader.destroy(publicId, {
+        await cloudinary.uploader.destroy(publicId, {
           folder: "profileImage", // Optional, specify the folder if necessary
         });
       }
@@ -610,19 +606,23 @@ export const updateProfileImage = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const updateProfile = async (req,res) => {
+export const updateProfile = async (req, res) => {
   try {
-    const {email,name,mobile} = req.body
-    const partnerData = await Partner.findOneAndUpdate({email:email},{$set:{name,mobile}},{new:true})
+    const { email, name, mobile } = req.sanitisedData;
+    const partnerData = await Partner.findOneAndUpdate(
+      { email: email },
+      { $set: { name, mobile } },
+      { new: true }
+    );
     return res.status(200).json({ partnerData });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 export const reportUser = async (req, res) => {
   try {
-    const { userId, reason, partnerId } = req.body;
+    const { userId, reason, partnerId } = req.sanitisedData;
     const userData = await User.findById(userId);
     let alreadyReported = userData.report.find(
       (user) => user.reportedBy.toString() === partnerId.toString()

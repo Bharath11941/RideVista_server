@@ -12,6 +12,7 @@ import {
   AdminReport,
   totalBookings
 } from "../controllers/adminController.js";
+
 import { adminTokenVerify } from "../middlewares/authVerify.js";
 adminRoute.post("/login", adminLogin);
 adminRoute.get("/users", adminTokenVerify, usersList);

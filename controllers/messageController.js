@@ -2,7 +2,7 @@ import Message from "../models/messageModel.js";
 
 export const addMessage = async (req,res) => {
   try {
-    const {chatId,text,senderId} = req.body
+    const {chatId,text,senderId} = req.sanitisedData
     const message = new Message({chatId,text,senderId})
 
     const result = await message.save()

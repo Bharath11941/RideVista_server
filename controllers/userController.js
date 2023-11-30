@@ -19,11 +19,9 @@ dotenv.config();
 let otpId;
 
 export const userSignup = async (req, res) => {
-  
-    
   try {
-    const { name, email, mobile, password,referralCode } = req.body;
-    const ownReferalCode = generateReferralCode(name)
+    const { name, email, mobile, password, referralCode } = req.sanitisedData;
+    const ownReferalCode = generateReferralCode(name);
     let referrer;
     const hashedPassword = await securePassword(password);
     const emailExist = await User.findOne({ email: email });
@@ -34,9 +32,9 @@ export const userSignup = async (req, res) => {
     }
     if (referralCode) {
       referrer = await User.findOne({ referalCode: referralCode });
-  
+
       if (!referrer) {
-        return res.status(400).json({ message: 'Invalid referral code.' });
+        return res.status(400).json({ message: "Invalid referral code." });
       }
     }
     const user = new User({
@@ -44,32 +42,38 @@ export const userSignup = async (req, res) => {
       email: email,
       mobile: mobile,
       password: hashedPassword,
-      referalCode:ownReferalCode
+      referalCode: ownReferalCode,
     });
     const userData = await user.save();
     if (referrer) {
       // Increase the wallet of the referring user by 50 rupees
       await User.updateOne(
         { _id: referrer._id },
-        { $inc: { wallet: 50 } ,$push: {
-          walletHistory: {
-            date: new Date(),
-            amount: +50,
-            description: `Money credited through refferring ${userData.name}`,
+        {
+          $inc: { wallet: 50 },
+          $push: {
+            walletHistory: {
+              date: new Date(),
+              amount: +50,
+              description: `Money credited through refferring ${userData.name}`,
+            },
           },
-        },}
+        }
       );
-  
+
       // Increase the wallet of the new user by 50 rupees
       await User.updateOne(
         { _id: userData._id },
-        { $inc: { wallet: 50 },$push: {
-          walletHistory: {
-            date: new Date(),
-            amount: +50,
-            description: `Money credited through refferal code of ${referrer.name} `,
+        {
+          $inc: { wallet: 50 },
+          $push: {
+            walletHistory: {
+              date: new Date(),
+              amount: +50,
+              description: `Money credited through refferal code of ${referrer.name} `,
+            },
           },
-        } }
+        }
       );
     }
     otpId = await sendEmail(userData.name, userData.email, userData._id);
@@ -86,7 +90,7 @@ export const userSignup = async (req, res) => {
 };
 export const emailOtpVerification = async (req, res) => {
   try {
-    const { otp, userId } = req.body;
+    const { otp, userId } = req.sanitisedData;
     const otpData = await Otp.find({ userId: userId });
     const { expiresAt } = otpData[otpData.length - 1];
     const correctOtp = otpData[otpData.length - 1].otp;
@@ -113,7 +117,7 @@ export const emailOtpVerification = async (req, res) => {
 };
 export const resendOtp = async (req, res) => {
   try {
-    const { userEmail } = req.body;
+    const { userEmail } = req.sanitisedData;
     const { _id, name, email } = await User.findOne({ email: userEmail });
     const otpId = sendEmail(name, email, _id);
     if (otpId) {
@@ -130,7 +134,7 @@ export const resendOtp = async (req, res) => {
 };
 export const loginVerification = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.sanitisedData;
     const user = await User.findOne({ email: email });
     if (!user) {
       return res.status(401).json({ message: "User not registered" });
@@ -164,7 +168,7 @@ export const loginVerification = async (req, res) => {
 
 export const userGoogleLogin = async (req, res) => {
   try {
-    const { userEmail } = req.body;
+    const { userEmail } = req.sanitisedData;
     const registeredUser = await User.findOne({ email: userEmail });
     if (!registeredUser) {
       return res.status(401).json({ message: "User is not regitered" });
@@ -198,11 +202,11 @@ export const userGoogleLogin = async (req, res) => {
 
 export const forgetPassword = async (req, res) => {
   try {
-    const { userEmail } = req.body;
+    const { userEmail } = req.sanitisedData;
     const secret = process.env.PASSWORD_SECRET;
     const oldUser = await User.findOne({ email: userEmail });
     if (!oldUser) {
-      return res.status(404).json({ message: "User is not regitered" });
+      return res.status(401).json({ message: "User is not regitered" });
     }
     const token = jwt.sign({ id: oldUser._id }, secret, { expiresIn: "5m" });
     let transporter = nodemailer.createTransport({
@@ -240,11 +244,11 @@ export const forgetPassword = async (req, res) => {
 };
 export const resetPassword = async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password } = req.sanitisedData;
     const { id, token } = req.params;
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ message: "user not found" });
+      return res.status(401).json({ message: "user not found" });
     }
     try {
       const verify = jwt.verify(token, process.env.PASSWORD_SECRET);
@@ -270,7 +274,6 @@ export const resetPassword = async (req, res) => {
 export const getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(id,"from")
     const userData = await User.findOne({ _id: id });
     res.status(200).json({ userData });
   } catch (error) {
@@ -279,47 +282,52 @@ export const getUserDetails = async (req, res) => {
   }
 };
 
-export const updateProfileImage = async (req,res) => {
+export const updateProfileImage = async (req, res) => {
   try {
-    const { userId,image,prevImg } = req.body;
+    const { userId, image, prevImg } = req.sanitisedData;
     try {
-      if(prevImg){
+      if (prevImg) {
         const publicId = prevImg.match(/\/v\d+\/(.+?)\./)[1]; // Extract public ID from URL
 
         const deletionResult = await cloudinary.uploader.destroy(publicId, {
           folder: "profileImage", // Optional, specify the folder if necessary
         });
       }
-    
 
       const profileFile = await cloudinary.uploader.upload(image, {
         folder: "profileImage",
       });
-      const userData = await User.findByIdAndUpdate({_id:userId},{$set:{profileImage:profileFile.secure_url}},{new:true})
+      const userData = await User.findByIdAndUpdate(
+        { _id: userId },
+        { $set: { profileImage: profileFile.secure_url } },
+        { new: true }
+      );
       return res.status(200).json({ userData });
-   
-      
     } catch (uploadError) {
       console.error("Cloudinary upload error:", uploadError);
-      return res.status(500).json({ message: "Error uploading image to Cloudinary" });
+      return res
+        .status(500)
+        .json({ message: "Error uploading image to Cloudinary" });
     }
-    
-
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-}
-export const updateProfile = async (req,res) => {
+};
+export const updateProfile = async (req, res) => {
   try {
-    const {email,name,mobile} = req.body
-    const userData = await User.findOneAndUpdate({email:email},{$set:{name,mobile}},{new:true})
+    const { email, name, mobile } = req.sanitisedData;
+    const userData = await User.findOneAndUpdate(
+      { email: email },
+      { $set: { name, mobile } },
+      { new: true }
+    );
     return res.status(200).json({ userData });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 export const homeCarList = async (req, res) => {
   try {
     const carData = await Car.find().populate("partnerId").limit(6);
@@ -347,7 +355,7 @@ export const carBooking = async (req, res) => {
       pickUpLocation,
       returnLocation,
       walletChecked,
-    } = req.body;
+    } = req.sanitisedData;
     let method = walletChecked ? "Wallet" : "Razorpay";
     const booking = new Bookings({
       user: userId,
@@ -397,7 +405,9 @@ export const carBooking = async (req, res) => {
         members: { $all: [userId, partnerId] },
       });
       if (!chatExist) {
-        const newChat = new chatModel({ members: [userId.toString(), partnerId.toString()] });
+        const newChat = new chatModel({
+          members: [userId.toString(), partnerId.toString()],
+        });
         await newChat.save();
       }
 
@@ -434,7 +444,6 @@ export const carBooking = async (req, res) => {
 export const verifyBooking = async (req, res) => {
   try {
     const { response, bookingData } = req.body;
-    console.log(bookingData, "from back end");
     let hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
     hmac.update(
       response.razorpay_order_id + "|" + response.razorpay_payment_id
@@ -459,11 +468,19 @@ export const verifyBooking = async (req, res) => {
         { new: true }
       );
       const chatExist = await chatModel.findOne({
-        members: { $all: [bookingDetails.user.toString(), bookingDetails.partner.toString()] },
+        members: {
+          $all: [
+            bookingDetails.user.toString(),
+            bookingDetails.partner.toString(),
+          ],
+        },
       });
       if (!chatExist) {
         const newChat = new chatModel({
-          members: [bookingDetails.user.toString(), bookingDetails.partner.toString()],
+          members: [
+            bookingDetails.user.toString(),
+            bookingDetails.partner.toString(),
+          ],
         });
         await newChat.save();
       }
@@ -484,7 +501,7 @@ export const verifyBooking = async (req, res) => {
 };
 export const reviewCar = async (req, res) => {
   try {
-    const { carId, userId, rating, reason } = req.body;
+    const { carId, userId, rating, reason } = req.sanitisedData;
     const carData = await Car.findById(carId);
     let alreadyRated = carData.ratings.find(
       (user) => user.postedBy.toString() === userId.toString()
@@ -492,7 +509,13 @@ export const reviewCar = async (req, res) => {
     if (alreadyRated) {
       await Car.updateOne(
         { ratings: { $elemMatch: alreadyRated } },
-        { $set: { "ratings.$.star": rating, "ratings.$.description": reason,"ratings.$.postedDate":Date.now() } }
+        {
+          $set: {
+            "ratings.$.star": rating,
+            "ratings.$.description": reason,
+            "ratings.$.postedDate": Date.now(),
+          },
+        }
       );
     } else {
       await Car.findByIdAndUpdate(carId, {
@@ -516,9 +539,9 @@ export const reviewCar = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const carRatings = async (req,res) => {
+export const carRatings = async (req, res) => {
   try {
-    const {id} = req.params
+    const { id } = req.params;
     const car = await Car.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
       { $unwind: "$ratings" },
@@ -544,32 +567,23 @@ export const carRatings = async (req,res) => {
     // Extract the ratings array from the result
     const ratings = car.length > 0 ? car[0].ratings : [];
 
-    res.status(200).json(ratings)
+    res.status(200).json(ratings);
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 export const filterCarDateLocation = async (req, res) => {
   try {
-    const { pickUpLocation, returnLocation, pickUpDate, returnDate } = req.body;
+    const { pickUpLocation, returnLocation, pickUpDate, returnDate } =
+      req.sanitisedData;
     const availableCars = await Car.aggregate([
       {
         $match: {
           $or: [
-            { location: pickUpLocation },
-            { location: returnLocation },
-            {
-              location: {
-                $regex: new RegExp(pickUpLocation, "i"),
-              },
-            },
-            {
-              location: {
-                $regex: new RegExp(returnLocation, "i"),
-              },
-            },
+            { location: { $regex: new RegExp(pickUpLocation, "i") } },
+            { location: { $regex: new RegExp(returnLocation, "i") } },
           ],
         },
       },
@@ -625,7 +639,7 @@ export const myBookings = async (req, res) => {
 };
 export const cancelBooking = async (req, res) => {
   try {
-    const { bookingId, reason } = req.body;
+    const { bookingId, reason } = req.sanitisedData;
     const updataedData = await Bookings.findByIdAndUpdate(
       { _id: bookingId },
       { $set: { cancelReason: reason, cancelStatus: "Pending" } },
@@ -651,7 +665,7 @@ export const cancelBooking = async (req, res) => {
 
 export const reportCarOwner = async (req, res) => {
   try {
-    const { userId, reason, ownerId } = req.body;
+    const { userId, reason, ownerId } = req.sanitisedData;
     const partnerData = await Partner.findById(ownerId);
     let alreadyReported = partnerData.report.find(
       (partner) => partner.reportedBy.toString() === userId.toString()

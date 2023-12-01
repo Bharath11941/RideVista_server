@@ -15,7 +15,7 @@ import dbconnect from "./config/mongodb.js"
 dbconnect()
 
 app.use(cors({
-  origin:"https://ride-vista-client.vercel.app/",
+  origin:"https://ride-vista-client.vercel.app",
   methods:['GET','POST','PUT','PATCH'],
   credentials:true
 }))

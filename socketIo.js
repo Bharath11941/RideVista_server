@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 function socketConnection(server) {
   const io = new Server(server, {
     cors: {
-      origin: "https://ride-vista-client.vercel.app/",
+      origin: "https://ride-vista-client.vercel.app",
       methods: ["GET", "POST"],
     },
   });

@@ -1,10 +1,9 @@
 import { Server } from "socket.io";
 
 function socketConnection(server) {
-  console.log("socket connection calling");
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: "https://ride-vista-client.vercel.app/",
       methods: ["GET", "POST"],
     },
   });

@@ -221,7 +221,7 @@ export const forgetPassword = async (req, res) => {
       from: process.env.EMAIL_USER,
       to: userEmail,
       subject: "Forgot password",
-      text: `http://localhost:5173/resetPassword/${oldUser._id}/${token}`,
+      text: `https://ride-vista-client.vercel.app/resetPassword/${oldUser._id}/${token}`,
     };
 
     transporter.sendMail(mailOptions, function (error, info) {

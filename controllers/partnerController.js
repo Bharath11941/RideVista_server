@@ -187,7 +187,7 @@ export const partnerForgotPass = async (req, res) => {
       from: process.env.EMAIL_USER,
       to: partnerEmail,
       subject: "Forgot password",
-      text: `http://localhost:5173/partner/partnerReset/${oldPartner._id}/${token}`,
+      text: `https://ride-vista-client.vercel.app/partner/partnerReset/${oldPartner._id}/${token}`,
     };
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {

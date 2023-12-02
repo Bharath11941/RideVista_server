@@ -456,6 +456,17 @@ export const cancelBookingPartner = async (req, res) => {
         },
       }
     );
+    await Car.findByIdAndUpdate(
+      { _id: updataedData.car },
+      {
+        $pull: {
+          bookingDates: {
+            startDate: updataedData.startDate,
+            endDate: updataedData.endDate,
+          },
+        },
+      },{new:true}
+    );
     const bookingList = await Bookings.find({ partner: partner })
       .populate("car")
       .sort({
@@ -513,6 +524,18 @@ export const apporveCancelRequest = async (req, res) => {
           },
         }
       );
+      await Car.findByIdAndUpdate(
+        { _id: updataedData.car },
+        {
+          $pull: {
+            bookingDates: {
+              startDate: updataedData.startDate,
+              endDate: updataedData.endDate,
+            },
+          },
+        },{new:true}
+      );
+
       const totalRequests = await Bookings.find({ cancelStatus: "Pending" })
         .populate("car")
         .sort({
@@ -538,7 +561,10 @@ export const apporveCancelRequest = async (req, res) => {
         message: "Cancel reuest has been rejected",
       });
     }
-  } catch (error) {}
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ status: "Internal Server Error" });
+  }
 };
 
 export const changeBookingStatus = async (req, res) => {

@@ -330,7 +330,7 @@ export const updateProfile = async (req, res) => {
 };
 export const homeCarList = async (req, res) => {
   try {
-    const carData = await Car.find().populate("partnerId").limit(6);
+    const carData = await Car.find({verificationStatus:"Approved"}).populate("partnerId").limit(6);
     if (carData) {
       res.status(200).json({ cars: carData });
     } else {
@@ -585,6 +585,7 @@ export const filterCarDateLocation = async (req, res) => {
             { location: { $regex: new RegExp(pickUpLocation, "i") } },
             { location: { $regex: new RegExp(returnLocation, "i") } },
           ],
+          verificationStatus:"Approved"
         },
       },
       {
